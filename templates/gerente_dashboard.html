@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Gerente - Restaurant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/gerente_styles.css') }}">
+</head>
+<body>
+    <div class="gerente-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Panel Gerente</h2>
+                <p class="gerente-name">{{ empleado.nombre }}</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-section="productos">
+                    <span class="icon">🍽️</span>
+                    Gestión de Platillos
+                </a>
+                <a href="#" class="nav-item" data-section="descuentos">
+                    <span class="icon">🏷️</span>
+                    Descuentos
+                </a>
+                <a href="#" class="nav-item" data-section="ordenes">
+                    <span class="icon">📋</span>
+                    Generar Órdenes
+                </a>
+                <a href="#" class="nav-item" data-section="reportes">
+                    <span class="icon">📊</span>
+                    Reportes Rápidos
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn-logout" onclick="cerrarSesionGerente()">Cerrar Sesión</button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Gestión de Platillos Section -->
+            <section id="productos" class="content-section active">
+                <div class="section-header">
+                    <h1>Gestión de Platillos</h1>
+                    <p>Edita información y costos de los productos</p>
+                </div>
+
+                <div class="filters-bar">
+                    <div class="search-box">
+                        <input type="text" id="buscar-producto" placeholder="Buscar platillo..." class="form-control">
+                    </div>
+                    <div class="filter-category">
+                        <select id="filtro-categoria" class="form-control">
+                            <option value="">Todas las categorías</option>
+                        </select>
+                    </div>
+                    <div class="filter-status">
+                        <select id="filtro-status" class="form-control">
+                            <option value="">Todos los estados</option>
+                            <option value="disponible">Disponible</option>
+                            <option value="fuera de servicio">Fuera de Servicio</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="productos-grid" id="productos-grid">
+                    <!-- Los productos se cargarán dinámicamente -->
+                </div>
+
+                <!-- Modal Editar Producto -->
+                <div id="modal-editar-producto" class="modal">
+                    <div class="modal-content large">
+                        <span class="close" onclick="cerrarModalEditarProducto()">&times;</span>
+                        <h2>Editar Platillo</h2>
+                        <form id="form-editar-producto">
+                            <input type="hidden" id="edit-producto-id">
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nombre del Platillo</label>
+                                    <input type="text" id="edit-producto-nombre" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Categoría</label>
+                                    <select id="edit-producto-categoria" class="form-control" required>
+                                        <option value="">Seleccionar categoría</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Costo del Producto</label>
+                                    <input type="number" id="edit-producto-costo" class="form-control" step="0.01" required>
+                                    <small>Costo de producción/compra</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Precio de Venta</label>
+                                    <input type="number" id="edit-producto-precio" class="form-control" step="0.01" required>
+                                    <small>Precio al cliente</small>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Precio en Puntos</label>
+                                    <input type="number" id="edit-producto-puntos" class="form-control">
+                                    <small>Puntos necesarios para canjear</small>
+                                </div>
+                                <div class="form-group">
+                                    <label>Margen de Ganancia</label>
+                                    <input type="text" id="margen-ganancia" class="form-control" readonly>
+                                    <small>Calculado automáticamente</small>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Descripción</label>
+                                <textarea id="edit-producto-descripcion" class="form-control" rows="3"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label>URL de Imagen</label>
+                                <input type="text" id="edit-producto-img" class="form-control" placeholder="https://ejemplo.com/imagen.jpg">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Estado del Producto</label>
+                                <select id="edit-producto-status" class="form-control" required>
+                                    <option value="disponible">Disponible</option>
+                                    <option value="fuera de servicio">Fuera de Servicio</option>
+                                </select>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="cerrarModalEditarProducto()">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Descuentos Section -->
+            <section id="descuentos" class="content-section">
+                <div class="section-header">
+                    <h1>Gestión de Descuentos</h1>
+                    <button class="btn btn-primary" onclick="mostrarModalDescuentoGerente()">+ Nuevo Descuento</button>
+                </div>
+
+                <div class="descuentos-stats">
+                    <div class="stat-card">
+                        <h3>Descuentos Activos</h3>
+                        <p class="stat-value" id="descuentos-activos">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Descuentos Vencidos</h3>
+                        <p class="stat-value" id="descuentos-vencidos">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Descuentos</h3>
+                        <p class="stat-value" id="total-descuentos">0</p>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="tabla-descuentos-gerente">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Tipo</th>
+                                <th>Valor</th>
+                                <th>Vigencia</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Modal Crear/Editar Descuento -->
+                <div id="modal-descuento-gerente" class="modal">
+                    <div class="modal-content">
+                        <span class="close" onclick="cerrarModalDescuentoGerente()">&times;</span>
+                        <h2 id="modal-descuento-titulo">Nuevo Descuento</h2>
+                        <form id="form-descuento-gerente">
+                            <input type="hidden" id="desc-id">
+                            
+                            <div class="form-group">
+                                <label>Código del Descuento</label>
+                                <input type="text" id="desc-codigo" class="form-control" required>
+                                <small>Código único que usarán los clientes</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Nombre/Descripción</label>
+                                <input type="text" id="desc-nombre" class="form-control" required>
+                                <small>Ejemplo: "Descuento Navidad 2024"</small>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Tipo de Descuento</label>
+                                    <select id="desc-tipo" class="form-control" required onchange="actualizarEjemploDescuento()">
+                                        <option value="porcentaje">Porcentaje (%)</option>
+                                        <option value="fijo">Monto Fijo ($)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Valor</label>
+                                    <input type="number" id="desc-valor" class="form-control" step="0.01" required onchange="actualizarEjemploDescuento()">
+                                    <small id="ejemplo-descuento">Ejemplo: 10% = $10 de descuento en compra de $100</small>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Fecha Inicio</label>
+                                    <input type="date" id="desc-fecha-inicio" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Fecha Fin</label>
+                                    <input type="date" id="desc-fecha-fin" class="form-control" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="desc-activo" checked>
+                                    Activar descuento inmediatamente
+                                </label>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="cerrarModalDescuentoGerente()">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Guardar Descuento</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Generar Órdenes Section -->
+            <section id="ordenes" class="content-section">
+                <div class="section-header">
+                    <h1>Generar Órdenes</h1>
+                    <p>Crea órdenes directamente desde el panel de gerente</p>
+                </div>
+
+                <div class="orden-container">
+                    <div class="productos-selection">
+                        <h3>Seleccionar Productos</h3>
+                        
+                        <div class="categoria-tabs" id="categoria-tabs">
+                            <!-- Las categorías se cargarán dinámicamente -->
+                        </div>
+
+                        <div class="productos-list" id="productos-orden-list">
+                            <!-- Los productos se cargarán dinámicamente -->
+                        </div>
+                    </div>
+
+                    <div class="orden-resumen">
+                        <h3>Resumen de Orden</h3>
+                        
+                        <div class="cliente-selector">
+                            <label>Cliente (Opcional)</label>
+                            <div class="input-group">
+                                <input type="text" id="orden-cliente-correo" class="form-control" placeholder="correo@ejemplo.com">
+                                <button class="btn btn-secondary" onclick="buscarClienteOrden()">Buscar</button>
+                            </div>
+                            <div id="cliente-info-orden"></div>
+                        </div>
+
+                        <div class="items-list" id="orden-items-list">
+                            <p class="empty-message">No hay productos en la orden</p>
+                        </div>
+
+                        <div class="orden-totales">
+                            <div class="total-row">
+                                <span>Subtotal:</span>
+                                <span id="orden-subtotal">$0.00</span>
+                            </div>
+                            <div class="total-row total-final">
+                                <span>Total:</span>
+                                <span id="orden-total">$0.00</span>
+                            </div>
+                        </div>
+
+                        <div class="orden-notas">
+                            <label>Notas Especiales</label>
+                            <textarea id="orden-notas" class="form-control" rows="2" placeholder="Instrucciones especiales..."></textarea>
+                        </div>
+
+                        <div class="orden-actions">
+                            <button class="btn btn-secondary btn-block" onclick="limpiarOrden()">Limpiar Orden</button>
+                            <button class="btn btn-primary btn-block" onclick="guardarOrdenGerente()">Generar Orden</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Reportes Rápidos Section -->
+            <section id="reportes" class="content-section">
+                <div class="section-header">
+                    <h1>Reportes Rápidos</h1>
+                    <p>Visualiza estadísticas importantes del negocio</p>
+                </div>
+
+                <div class="reportes-filtros">
+                    <div class="form-group">
+                        <label>Período</label>
+                        <select id="reporte-periodo" class="form-control" onchange="cargarReportesRapidos()">
+                            <option value="hoy">Hoy</option>
+                            <option value="semana">Esta Semana</option>
+                            <option value="mes">Este Mes</option>
+                            <option value="personalizado">Personalizado</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="fechas-personalizadas" style="display: none;">
+                        <label>Fecha Inicio</label>
+                        <input type="date" id="reporte-fecha-inicio" class="form-control">
+                    </div>
+                    <div class="form-group" id="fechas-personalizadas-fin" style="display: none;">
+                        <label>Fecha Fin</label>
+                        <input type="date" id="reporte-fecha-fin" class="form-control">
+                    </div>
+                    <button class="btn btn-primary" onclick="cargarReportesRapidos()">Actualizar</button>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Ventas del Período</h3>
+                        <p class="stat-value" id="reporte-ventas-total">$0.00</p>
+                        <span class="stat-label">Total en ventas</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Órdenes Procesadas</h3>
+                        <p class="stat-value" id="reporte-ordenes-cantidad">0</p>
+                        <span class="stat-label">Número de transacciones</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Ticket Promedio</h3>
+                        <p class="stat-value" id="reporte-ticket-promedio">$0.00</p>
+                        <span class="stat-label">Promedio por orden</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Producto Más Vendido</h3>
+                        <p class="stat-value" id="reporte-producto-top">-</p>
+                        <span class="stat-label">Top seller</span>
+                    </div>
+                </div>
+
+                <div class="reportes-cards">
+                    <div class="report-card">
+                        <h3>Productos por Categoría</h3>
+                        <div class="chart-container">
+                            <canvas id="chart-categorias"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="report-card">
+                        <h3>Top 5 Productos Más Vendidos</h3>
+                        <div class="table-container">
+                            <table id="tabla-top-productos">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Producto</th>
+                                        <th>Cantidad</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/gerente_dashboard.js') }}"></script>
+</body>
+</html>

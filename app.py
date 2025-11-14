@@ -79,8 +79,23 @@ def dashboard():
         return redirect(url_for('admin_dashboard'))
     elif empleado['rol'] == 'cajero':
         return redirect(url_for('cajero'))
+    elif empleado['rol'] == 'gerente':
+        return redirect(url_for('gerente_dashboard'))
     
     return render_template('dashboard.html', empleado=empleado)
+
+@app.route('/gerente')
+def gerente_dashboard():
+    session_id = session.get('session_id')
+    if not session_id:
+        return redirect(url_for('index'))
+    
+    empleado = get_session(session_id)
+    if not empleado or empleado['rol'] != 'gerente':
+        return redirect(url_for('index'))
+    
+    return render_template('gerente_dashboard.html', empleado=empleado)
+
 
 @app.route('/admin')
 def admin_dashboard():

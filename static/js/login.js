@@ -39,7 +39,9 @@ async function submitCodigo() {
             } else {
                 // Redirigir según el rol
                 if (data.empleado.rol === 'administrador') {
-                    window.location.href = '/admin';
+                window.location.href = '/admin';
+                } else if (data.empleado.rol === 'gerente') {
+                    window.location.href = '/gerente';
                 } else {
                     window.location.href = '/dashboard';
                 }
