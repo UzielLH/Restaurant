@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cajero - Restaurant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cajero.css') }}">
+</head>
+<body>
+    <div class="header">
+        <div class="user-info">
+            <span class="welcome">Bienvenido, {{ empleado.nombre }}</span>
+            <span class="role">{{ empleado.rol|capitalize }}</span>
+        </div>
+        <div class="header-actions">
+            <button class="btn-secondary" onclick="toggleOrdenes()">
+                Ver Órdenes (<span id="ordenes-count">0</span>)
+            </button>
+            <button class="btn-secondary" onclick="abrirCierreCaja()">
+                Cierre de Caja
+            </button>
+            <button class="logout-btn" onclick="logout()">Cerrar Sesión</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Sidebar Izquierdo: Categorías -->
+        <aside class="sidebar-left">
+            <h2>Categorías</h2>
+            <div class="category-filters">
+                <button class="category-btn active" onclick="filterCategory('all')" data-category="all">
+                    Todos
+                </button>
+                {% for categoria in categorias %}
+                <button class="category-btn" onclick="filterCategory('{{ categoria }}')" data-category="{{ categoria }}">
+                    {{ categoria }}
+                </button>
+                {% endfor %}
+            </div>
+        </aside>
+
+        <!-- Contenido Central: Productos -->
+        <main class="content">
+            <div class="search-bar">
+                <input type="text" id="search-input" placeholder="Buscar productos..." onkeyup="searchProducts()">
+            </div>
+
+            <div class="products-grid" id="products-grid">
+                {% for producto in productos %}
+                <div class="product-card" data-categoria="{{ producto.categoria }}" data-id="{{ producto.id }}">
+                    <div class="product-image">
+                        <img src="{{ producto.img }}" alt="{{ producto.nombre }}" onerror="this.src='https://via.placeholder.com/300x200?text=Sin+Imagen'">
+                        <span class="status-badge {{ producto.status }}">
+                            {{ 'Disponible' if producto.status == 'disponible' else 'No disponible' }}
+                        </span>
+                    </div>
+                    <div class="product-info">
+                        <h3 class="product-name">{{ producto.nombre }}</h3>
+                        <p class="product-category">{{ producto.categoria }}</p>
+                        <p class="product-description">{{ producto.descripcion }}</p>
+                        <div class="product-footer">
+                            <span class="product-price">${{ "%.2f"|format(producto.precio) }}</span>
+                            {% if producto.status == 'disponible' %}
+                            <button class="btn-add" onclick='addToCart({{ producto|tojson|safe }})'>
+                                Agregar
+                            </button>
+                            {% else %}
+                            <button class="btn-add" disabled>No disponible</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </main>
+
+        <!-- Sidebar Derecho: Orden Actual -->
+        <aside class="sidebar-right">
+            <div class="cart-summary">
+                <h3>Orden Actual</h3>
+                <div class="cart-items" id="cart-items">
+                    <p class="empty-cart">No hay productos</p>
+                </div>
+                <!-- Agregar después de </div> de cart-items y antes de cart-total -->
+                <div class="orden-extras">
+                    <div class="orden-extra-item">
+                        <label for="orden-notas">Notas (Opcional):</label>
+                        <textarea 
+                            id="orden-notas" 
+                            placeholder="Agregar instrucciones especiales..."
+                            rows="3"
+                        ></textarea>
+                    </div>
+                    
+                    <div class="orden-extra-item">
+                        <label>Cliente (Opcional):</label>
+                        <div class="cliente-selector">
+                            <div id="cliente-seleccionado" class="cliente-info">
+                                <span class="cliente-nombre">Sin cliente</span>
+                            </div>
+                            <button class="btn-seleccionar-cliente" onclick="abrirModalClientes()">
+                                Seleccionar Cliente
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="cart-total">
+                    <strong>Total: $<span id="total">0.00</span></strong>
+                </div>
+                <button class="btn-primary" onclick="guardarOrden()">Guardar Orden</button>
+                <button class="btn-danger" onclick="limpiarOrden()">Limpiar</button>
+            </div>
+        </aside>
+    </div>
+
+    <!-- Modal de Órdenes -->
+    <div id="ordenes-modal" class="modal" style="display: none;">
+        <div class="modal-overlay" onclick="toggleOrdenes()"></div>
+        <div class="modal-ordenes">
+            <div class="modal-header">
+                <h2>Órdenes Activas</h2>
+                <button class="btn-close" onclick="toggleOrdenes()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="ordenes-list" class="ordenes-list">
+                    <p class="empty-ordenes">No hay órdenes activas</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Pago -->
+    <div id="pago-modal" class="modal" style="display: none;">
+        <div class="modal-overlay" onclick="cerrarModalPago()"></div>
+        <div class="modal-pago">
+            <div class="modal-header">
+                <h2>Procesar Pago</h2>
+                <button class="btn-close" onclick="cerrarModalPago()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="pago-info">
+                    <div class="pago-item">
+                        <span class="pago-label">Total a pagar:</span>
+                        <span class="pago-value" id="pago-total">$0.00</span>
+                    </div>
+                    
+                    <div class="pago-input-group">
+                        <label for="pago-con-input">Cliente paga con:</label>
+                        <div class="input-wrapper">
+                            <span class="currency">$</span>
+                            <input 
+                                type="number" 
+                                id="pago-con-input" 
+                                step="0.01" 
+                                min="0" 
+                                placeholder="0.00"
+                                oninput="calcularCambio()"
+                                autofocus
+                            >
+                        </div>
+                    </div>
+                    
+                    <div class="pago-shortcuts">
+                        <button class="btn-shortcut" onclick="setPagoCon('exacto')">Pago Exacto</button>
+                        <button class="btn-shortcut" onclick="setPagoCon(50)">$50</button>
+                        <button class="btn-shortcut" onclick="setPagoCon(100)">$100</button>
+                        <button class="btn-shortcut" onclick="setPagoCon(200)">$200</button>
+                        <button class="btn-shortcut" onclick="setPagoCon(500)">$500</button>
+                    </div>
+                    
+                    <div class="pago-cambio" id="pago-cambio-container" style="display: none;">
+                        <div class="cambio-label">Cambio:</div>
+                        <div class="cambio-value" id="pago-cambio">$0.00</div>
+                    </div>
+                    
+                    <div class="pago-error" id="pago-error" style="display: none;"></div>
+                </div>
+                <!-- Agregar después de </div> de pago-info -->
+                <div id="puntos-info" class="puntos-info" style="display: none;"></div>
+                
+                <div class="pago-actions">
+                    <button class="btn-confirmar-pago" onclick="confirmarPago()" id="btn-confirmar">
+                        Confirmar Pago
+                    </button>
+                    <button class="btn-cancelar-pago" onclick="cerrarModalPago()">
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Cierre de Caja -->
+    <div id="cierre-caja-modal" class="modal" style="display: none;">
+        <div class="modal-overlay" onclick="cerrarCierreCaja()"></div>
+        <div class="modal-cierre-caja">
+            <div class="modal-header">
+                <h2>Cierre de Caja</h2>
+                <button class="btn-close" onclick="cerrarCierreCaja()">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="cierre-loading" class="loading-spinner">
+                    <p>Cargando información...</p>
+                </div>
+                
+                <div id="cierre-content" style="display: none;">
+                    <div class="cierre-section">
+                        <h3>Información General</h3>
+                        <div class="cierre-info-grid">
+                            <div class="cierre-info-item">
+                                <span class="info-label">Cajero:</span>
+                                <span class="info-value" id="cierre-cajero">-</span>
+                            </div>
+                            <div class="cierre-info-item">
+                                <span class="info-label">Inicio de turno:</span>
+                                <span class="info-value" id="cierre-fecha-inicio">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="cierre-section">
+                        <h3>Resumen Financiero</h3>
+                        <div class="cierre-resumen">
+                            <div class="resumen-item">
+                                <span class="resumen-label">Monto Inicial:</span>
+                                <span class="resumen-value inicial" id="cierre-monto-inicial">$0.00</span>
+                            </div>
+                            <div class="resumen-item">
+                                <span class="resumen-label">Total Ventas:</span>
+                                <span class="resumen-value ventas" id="cierre-total-ventas">$0.00</span>
+                            </div>
+                            <div class="resumen-item">
+                                <span class="resumen-label">Órdenes Procesadas:</span>
+                                <span class="resumen-value" id="cierre-cantidad-ordenes">0</span>
+                            </div>
+                            <div class="resumen-item total">
+                                <span class="resumen-label">Monto Final:</span>
+                                <span class="resumen-value final" id="cierre-monto-final">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="cierre-section">
+                        <h3>Detalle de Ventas</h3>
+                        <div class="ventas-detalle" id="ventas-detalle-list">
+                            <p class="no-ventas">No hay ventas registradas</p>
+                        </div>
+                    </div>
+                    
+                    <div class="cierre-actions">
+                        <button class="btn-confirmar-cierre" onclick="confirmarCierreCaja()">
+                            Confirmar Cierre de Caja
+                        </button>
+                        <button class="btn-cancelar-cierre" onclick="cerrarCierreCaja()">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/cajero.js') }}"></script>
+    <!-- Modal de Clientes -->
+<div id="clientes-modal" class="modal" style="display: none;">
+    <div class="modal-overlay" onclick="cerrarModalClientes()"></div>
+    <div class="modal-clientes">
+        <div class="modal-header">
+            <h2>Seleccionar Cliente</h2>
+            <button class="btn-close" onclick="cerrarModalClientes()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="clientes-busqueda">
+                <input 
+                    type="text" 
+                    id="buscar-cliente-input" 
+                    placeholder="Buscar por correo..."
+                    onkeyup="filtrarClientes()"
+                >
+                <button class="btn-nuevo-cliente" onclick="mostrarFormularioCliente()">
+                    + Nuevo Cliente
+                </button>
+            </div>
+            
+            <div id="formulario-nuevo-cliente" style="display: none;">
+                <div class="form-nuevo-cliente">
+                    <h3>Registrar Nuevo Cliente</h3>
+                    <div class="form-group">
+                        <label>Nombre:</label>
+                        <input type="text" id="nuevo-cliente-nombre" placeholder="Nombre completo">
+                    </div>
+                    <div class="form-group">
+                        <label>Correo:</label>
+                        <input type="email" id="nuevo-cliente-correo" placeholder="correo@ejemplo.com">
+                    </div>
+                    <div class="form-actions">
+                        <button class="btn-guardar-cliente" onclick="guardarNuevoCliente()">
+                            Guardar
+                        </button>
+                        <button class="btn-cancelar-form" onclick="ocultarFormularioCliente()">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="clientes-lista" id="clientes-lista">
+                <p class="loading-clientes">Cargando clientes...</p>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

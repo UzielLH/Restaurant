@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant - Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="login-box">
+            <h1>Bienvenido</h1>
+            <p>Ingrese su código NIP</p>
+            
+            <div class="display">
+                <input type="password" id="codigo-input" readonly maxlength="4" value="">
+            </div>
+            
+            <div class="keypad">
+                <button class="key" onclick="addDigit('1')">1</button>
+                <button class="key" onclick="addDigit('2')">2</button>
+                <button class="key" onclick="addDigit('3')">3</button>
+                <button class="key" onclick="addDigit('4')">4</button>
+                <button class="key" onclick="addDigit('5')">5</button>
+                <button class="key" onclick="addDigit('6')">6</button>
+                <button class="key" onclick="addDigit('7')">7</button>
+                <button class="key" onclick="addDigit('8')">8</button>
+                <button class="key" onclick="addDigit('9')">9</button>
+                <button class="key clear" onclick="clearCodigo()">C</button>
+                <button class="key" onclick="addDigit('0')">0</button>
+                <button class="key enter" onclick="submitCodigo()">✓</button>
+            </div>
+            
+            <div id="message" class="message"></div>
+        </div>
+    </div>
+    
+    <div id="caja-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>Monto inicial de caja</h2>
+            <p>¿Con cuánto dinero inicia la caja?</p>
+            <input type="number" id="monto-caja" step="0.01" min="200" placeholder="Mínimo $200.00">
+            <button onclick="submitCaja()">Confirmar</button>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/login.js') }}"></script>
+</body>
+</html>
