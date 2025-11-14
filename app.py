@@ -14,6 +14,7 @@ app.config.from_object(Config)
 def index():
     return render_template('login.html')
 
+
 @app.route('/api/login', methods=['POST'])
 def login():
     data = request.get_json()
@@ -73,7 +74,26 @@ def dashboard():
     if not empleado:
         return redirect(url_for('index'))
     
+    # Redirigir según el rol
+    if empleado['rol'] == 'administrador':
+        return redirect(url_for('admin_dashboard'))
+    elif empleado['rol'] == 'cajero':
+        return redirect(url_for('cajero'))
+    
     return render_template('dashboard.html', empleado=empleado)
+
+@app.route('/admin')
+def admin_dashboard():
+    session_id = session.get('session_id')
+    if not session_id:
+        return redirect(url_for('index'))
+    
+    empleado = get_session(session_id)
+    if not empleado or empleado['rol'] != 'administrador':
+        return redirect(url_for('index'))
+    
+    return render_template('admin_dashboard.html', empleado=empleado)
+
 
 @app.route('/cajero')
 def cajero():

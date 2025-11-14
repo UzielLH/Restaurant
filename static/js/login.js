@@ -35,13 +35,14 @@ async function submitCodigo() {
             showMessage('¡Bienvenido!', 'success');
             
             if (data.requires_caja) {
-                setTimeout(() => {
-                    document.getElementById('caja-modal').style.display = 'flex';
-                }, 500);
+                mostrarModalCaja();
             } else {
-                setTimeout(() => {
+                // Redirigir según el rol
+                if (data.empleado.rol === 'administrador') {
+                    window.location.href = '/admin';
+                } else {
                     window.location.href = '/dashboard';
-                }, 1000);
+                }
             }
         } else {
             showMessage(data.message, 'error');
@@ -102,4 +103,8 @@ function showMessage(text, type) {
     const messageDiv = document.getElementById('message');
     messageDiv.textContent = text;
     messageDiv.className = `message ${type}`;
+}
+
+function mostrarModalCaja() {
+    document.getElementById('caja-modal').style.display = 'flex';
 }

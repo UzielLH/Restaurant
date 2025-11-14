@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administrador - Restaurant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin_styles.css') }}">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Admin Panel</h2>
+                <p class="admin-name">{{ empleado.nombre }}</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active" data-section="reportes">
+                    <span class="icon">📊</span>
+                    Reportes Financieros
+                </a>
+                <a href="#" class="nav-item" data-section="descuentos">
+                    <span class="icon">🏷️</span>
+                    Descuentos
+                </a>
+                <a href="#" class="nav-item" data-section="clientes">
+                    <span class="icon">👥</span>
+                    Consulta de Clientes
+                </a>
+                <a href="#" class="nav-item" data-section="ticket">
+                    <span class="icon">🎫</span>
+                    Configuración Ticket
+                </a>
+                <a href="#" class="nav-item" data-section="categorias">
+                    <span class="icon">📂</span>
+                    Categorías
+                </a>
+                <a href="#" class="nav-item" data-section="productos">
+                    <span class="icon">🍽️</span>
+                    Productos
+                </a>
+                <a href="#" class="nav-item" data-section="perfiles">
+                    <span class="icon">👤</span>
+                    Perfiles de Usuario
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Reportes Financieros Section -->
+            <section id="reportes" class="content-section active">
+                <div class="section-header">
+                    <h1>Reportes Financieros</h1>
+                    <p>Visualiza ingresos, inversión y ganancias del negocio</p>
+                </div>
+
+                <div class="filters-card">
+                    <h3>Filtros de Fecha</h3>
+                    <div class="filter-group">
+                        <div class="form-group">
+                            <label>Fecha Inicio</label>
+                            <input type="date" id="fecha-inicio-reporte" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha Fin</label>
+                            <input type="date" id="fecha-fin-reporte" class="form-control">
+                        </div>
+                        <button class="btn btn-primary" onclick="generarReporte()">Generar Reporte</button>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Ingresos Totales</h3>
+                        <p class="stat-value" id="ingresos-totales">$0.00</p>
+                        <span class="stat-label">Total de ventas</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Inversión en Costos</h3>
+                        <p class="stat-value" id="inversion-total">$0.00</p>
+                        <span class="stat-label">Costos de productos</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Ganancias Netas</h3>
+                        <p class="stat-value success" id="ganancias-netas">$0.00</p>
+                        <span class="stat-label">Ingresos - Costos</span>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Órdenes Procesadas</h3>
+                        <p class="stat-value" id="ordenes-totales">0</p>
+                        <span class="stat-label">Total de transacciones</span>
+                    </div>
+                </div>
+
+                <div class="report-table-card">
+                    <h3>Detalle de Ventas</h3>
+                    <div class="table-container">
+                        <table id="tabla-ventas-reporte">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>ID Venta</th>
+                                    <th>Cajero</th>
+                                    <th>Total</th>
+                                    <th>Costo</th>
+                                    <th>Ganancia</th>
+                                    <th>Cliente</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Descuentos Section -->
+            <section id="descuentos" class="content-section">
+                <div class="section-header">
+                    <h1>Gestión de Descuentos</h1>
+                    <button class="btn btn-primary" onclick="mostrarModalDescuento()">+ Nuevo Descuento</button>
+                </div>
+
+                <div class="table-container">
+                    <table id="tabla-descuentos">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Tipo</th>
+                                <th>Valor</th>
+                                <th>Fecha Inicio</th>
+                                <th>Fecha Fin</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Clientes Section -->
+            <section id="clientes" class="content-section">
+                <div class="section-header">
+                    <h1>Consulta de Clientes</h1>
+                    <div class="search-box">
+                        <input type="text" id="buscar-cliente" placeholder="Buscar por nombre o correo..." class="form-control">
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table id="tabla-clientes-admin">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Correo</th>
+                                <th>Puntos</th>
+                                <th>Fecha Registro</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Modal Detalle Cliente -->
+                <div id="modal-detalle-cliente" class="modal">
+                    <div class="modal-content large">
+                        <span class="close" onclick="cerrarModalDetalleCliente()">&times;</span>
+                        <h2>Detalle del Cliente</h2>
+                        <div id="cliente-info"></div>
+                        <h3>Historial de Órdenes</h3>
+                        <div class="table-container">
+                            <table id="tabla-ordenes-cliente">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>ID Orden</th>
+                                        <th>Total</th>
+                                        <th>Items</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Configuración Ticket Section -->
+            <section id="ticket" class="content-section">
+                <div class="section-header">
+                    <h1>Configuración del Ticket</h1>
+                    <p>Personaliza la información que aparece en los recibos</p>
+                </div>
+
+                <div class="config-card">
+                    <form id="form-ticket-config">
+                        <div class="form-group">
+                            <label>Nombre del Negocio</label>
+                            <input type="text" id="ticket-nombre-negocio" class="form-control" placeholder="Restaurant XYZ">
+                        </div>
+                        <div class="form-group">
+                            <label>Dirección</label>
+                            <input type="text" id="ticket-direccion" class="form-control" placeholder="Calle Principal #123">
+                        </div>
+                        <div class="form-group">
+                            <label>Teléfono</label>
+                            <input type="text" id="ticket-telefono" class="form-control" placeholder="(123) 456-7890">
+                        </div>
+                        <div class="form-group">
+                            <label>RFC</label>
+                            <input type="text" id="ticket-rfc" class="form-control" placeholder="RFC123456789">
+                        </div>
+                        <div class="form-group">
+                            <label>Mensaje de Agradecimiento</label>
+                            <textarea id="ticket-mensaje" class="form-control" rows="3" placeholder="¡Gracias por su compra! Vuelva pronto"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="ticket-mostrar-puntos">
+                                Mostrar información de puntos en el ticket
+                            </label>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Guardar Configuración</button>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Categorías Section -->
+            <section id="categorias" class="content-section">
+                <div class="section-header">
+                    <h1>Gestión de Categorías</h1>
+                    <button class="btn btn-primary" onclick="mostrarModalCategoria()">+ Nueva Categoría</button>
+                </div>
+
+                <div class="categories-grid" id="categorias-grid"></div>
+
+                <!-- Modal Crear/Editar Categoría -->
+                <div id="modal-categoria" class="modal">
+                    <div class="modal-content">
+                        <span class="close" onclick="cerrarModalCategoria()">&times;</span>
+                        <h2 id="modal-categoria-titulo">Nueva Categoría</h2>
+                        <form id="form-categoria">
+                            <input type="hidden" id="categoria-id">
+                            <div class="form-group">
+                                <label>Nombre de la Categoría</label>
+                                <input type="text" id="categoria-nombre" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Descripción</label>
+                                <textarea id="categoria-descripcion" class="form-control" rows="3"></textarea>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="cerrarModalCategoria()">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Guardar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Productos Section -->
+            <section id="productos" class="content-section">
+                <div class="section-header">
+                    <h1>Gestión de Productos</h1>
+                    <button class="btn btn-primary" onclick="mostrarModalProducto()">+ Nuevo Producto</button>
+                </div>
+
+                <div class="table-container">
+                    <table id="tabla-productos-admin">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Categoría</th>
+                                <th>Precio</th>
+                                <th>Costo</th>
+                                <th>Puntos</th>
+                                <th>Stock</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Modal Crear/Editar Producto -->
+                <div id="modal-producto" class="modal">
+                    <div class="modal-content large">
+                        <span class="close" onclick="cerrarModalProducto()">&times;</span>
+                        <h2 id="modal-producto-titulo">Nuevo Producto</h2>
+                        <form id="form-producto">
+                            <input type="hidden" id="producto-id">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nombre del Producto</label>
+                                    <input type="text" id="producto-nombre" class="form-control" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Categoría</label>
+                                    <select id="producto-categoria" class="form-control" required>
+                                        <option value="">Seleccionar categoría</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Precio de Venta</label>
+                                    <input type="number" id="producto-precio" class="form-control" step="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Costo</label>
+                                    <input type="number" id="producto-costo" class="form-control" step="0.01" required>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Precio en Puntos</label>
+                                    <input type="number" id="producto-puntos" class="form-control">
+                                </div>
+                                <div class="form-group">
+                                    <label>Stock Inicial</label>
+                                    <input type="number" id="producto-stock" class="form-control" value="0">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Descripción</label>
+                                <textarea id="producto-descripcion" class="form-control" rows="3"></textarea>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="producto-disponible" checked>
+                                    Producto disponible
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="cerrarModalProducto()">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Guardar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Perfiles Section -->
+            <section id="perfiles" class="content-section">
+                <div class="section-header">
+                    <h1>Gestión de Perfiles de Usuario</h1>
+                    <button class="btn btn-primary" onclick="mostrarModalPerfil()">+ Nuevo Perfil</button>
+                </div>
+
+                <div class="table-container">
+                    <table id="tabla-perfiles">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Nombre</th>
+                                <th>Código</th>
+                                <th>Rol</th>
+                                <th>Fecha Creación</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Modal Crear/Editar Perfil -->
+                <div id="modal-perfil" class="modal">
+                    <div class="modal-content">
+                        <span class="close" onclick="cerrarModalPerfil()">&times;</span>
+                        <h2 id="modal-perfil-titulo">Nuevo Perfil de Usuario</h2>
+                        <form id="form-perfil">
+                            <input type="hidden" id="perfil-id">
+                            <div class="form-group">
+                                <label>Nombre Completo</label>
+                                <input type="text" id="perfil-nombre" class="form-control" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Código de Acceso (4 dígitos)</label>
+                                <input type="text" id="perfil-codigo" class="form-control" maxlength="4" pattern="[0-9]{4}" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Rol</label>
+                                <select id="perfil-rol" class="form-control" required>
+                                    <option value="">Seleccionar rol</option>
+                                    <option value="cajero">Cajero</option>
+                                    <option value="administrador">Administrador</option>
+                                    <option value="gerente">Gerente</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" id="perfil-activo" checked>
+                                    Perfil activo
+                                </label>
+                            </div>
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" onclick="cerrarModalPerfil()">Cancelar</button>
+                                <button type="submit" class="btn btn-primary">Guardar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal Descuento -->
+    <div id="modal-descuento" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="cerrarModalDescuento()">&times;</span>
+            <h2 id="modal-descuento-titulo">Nuevo Descuento</h2>
+            <form id="form-descuento">
+                <input type="hidden" id="descuento-id">
+                <div class="form-group">
+                    <label>Código del Descuento</label>
+                    <input type="text" id="descuento-codigo" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Nombre/Descripción</label>
+                    <input type="text" id="descuento-nombre" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Descuento</label>
+                    <select id="descuento-tipo" class="form-control" required>
+                        <option value="porcentaje">Porcentaje</option>
+                        <option value="fijo">Monto Fijo</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Valor</label>
+                    <input type="number" id="descuento-valor" class="form-control" step="0.01" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fecha Inicio</label>
+                        <input type="date" id="descuento-fecha-inicio" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fecha Fin</label>
+                        <input type="date" id="descuento-fecha-fin" class="form-control" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="descuento-activo" checked>
+                        Descuento activo
+                    </label>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="cerrarModalDescuento()">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/admin_dashboard.js') }}"></script>
+</body>
+</html>
