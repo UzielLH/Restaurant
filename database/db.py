@@ -574,3 +574,120 @@ def agregar_puntos_cliente(cliente_id, puntos):
         cursor.close()
         conn.close()
         raise e
+    
+def get_all_empleados():
+    """Obtiene todos los empleados del sistema"""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cursor.execute("""
+        SELECT 
+            id, 
+            nombre, 
+            rol, 
+            codigo,
+            created_at
+        FROM empleado
+        ORDER BY nombre
+    """)
+    
+    empleados = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    result = []
+    for emp in empleados:
+        empleado = dict(emp)
+        empleado['created_at'] = empleado['created_at'].strftime('%Y-%m-%d %H:%M:%S') if empleado.get('created_at') else None
+        result.append(empleado)
+    
+    return result
+
+def get_reportes_financieros_empleados(fecha_inicio, fecha_fin):
+    """Obtiene reportes financieros agrupados por empleado"""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cursor.execute("""
+            SELECT 
+                e.id as empleado_id,
+                e.nombre as empleado_nombre,
+                e.rol as empleado_rol,
+                COUNT(v.id) as cantidad_ordenes,
+                COALESCE(SUM(v.total), 0) as ingresos_totales,
+                COALESCE(SUM(
+                    (SELECT SUM((item->>'costo')::numeric * (item->>'cantidad')::integer)
+                     FROM jsonb_array_elements(v.items) as item)
+                ), 0) as costos_totales,
+                COALESCE(SUM(v.total) - SUM(
+                    (SELECT SUM((item->>'costo')::numeric * (item->>'cantidad')::integer)
+                     FROM jsonb_array_elements(v.items) as item)
+                ), 0) as ganancias_netas
+            FROM empleado e
+            LEFT JOIN ventas v ON e.id = v.cajero_id 
+                AND v.fecha_venta BETWEEN %s::timestamp AND (%s || ' 23:59:59')::timestamp
+            WHERE e.rol IN ('cajero', 'gerente', 'administrador')
+            GROUP BY e.id, e.nombre, e.rol
+            ORDER BY ingresos_totales DESC
+        """, (fecha_inicio, fecha_fin))
+        
+        reportes = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        result = []
+        for reporte in reportes:
+            result.append({
+                'empleado_id': reporte['empleado_id'],
+                'empleado_nombre': reporte['empleado_nombre'],
+                'empleado_rol': reporte['empleado_rol'],
+                'cantidad_ordenes': int(reporte['cantidad_ordenes']),
+                'ingresos_totales': float(reporte['ingresos_totales']),
+                'costos_totales': float(reporte['costos_totales']),
+                'ganancias_netas': float(reporte['ganancias_netas'])
+            })
+        
+        return result
+        
+    except Exception as e:
+        print(f"Error en get_reportes_financieros_empleados: {e}")
+        cursor.close()
+        conn.close()
+        raise e
+
+def get_ventas_por_empleado(empleado_id, fecha_inicio, fecha_fin):
+    """Obtiene todas las ventas de un empleado en un rango de fechas"""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cursor.execute("""
+        SELECT 
+            id, 
+            orden_id, 
+            cajero_nombre, 
+            total, 
+            pago_con, 
+            cambio,
+            fecha_venta,
+            items
+        FROM ventas 
+        WHERE cajero_id = %s 
+        AND fecha_venta BETWEEN %s::timestamp AND (%s || ' 23:59:59')::timestamp
+        ORDER BY fecha_venta DESC
+    """, (empleado_id, fecha_inicio, fecha_fin))
+    
+    ventas = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    result = []
+    for v in ventas:
+        venta = dict(v)
+        venta['total'] = float(venta['total'])
+        venta['pago_con'] = float(venta['pago_con'])
+        venta['cambio'] = float(venta['cambio'])
+        venta['fecha_venta'] = venta['fecha_venta'].strftime('%Y-%m-%d %H:%M:%S')
+        result.append(venta)
+    
+    return result

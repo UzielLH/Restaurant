@@ -1,158 +1,145 @@
-from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for
+from flask import Blueprint, render_template, request, jsonify, session, redirect, url_for, send_file
 from database.redis_client import get_session
 from database.db import (
-    get_reportes_financieros,
-    get_descuentos,
-    crear_descuento,
-    actualizar_descuento,
-    eliminar_descuento,
-    get_configuracion_ticket,
-    guardar_configuracion_ticket,
-    crear_categoria,
-    actualizar_categoria,
-    eliminar_categoria,
-    crear_producto,
-    actualizar_producto,
-    eliminar_producto,
-    crear_empleado,
-    actualizar_empleado,
-    eliminar_empleado,
-    get_all_empleados
+    get_all_empleados,
+    get_ventas_por_empleado,
+    get_reportes_financieros_empleados,
+    get_all_clientes,
+    get_all_productos,
+    get_categorias
 )
+from utils.pdf_reports import generar_reporte_empleados_pdf
+import io
+from datetime import datetime, timedelta
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
-@admin_bp.route('/dashboard')
+@admin_bp.route('/')  # Cambiar de '/dashboard' a '/'
 def dashboard():
-    session_id = session.get('session_id')
-    if not session_id:
-        return redirect(url_for('index'))
-    
-    empleado = get_session(session_id)
-    if not empleado or empleado['rol'] != 'administrador':
+    empleado = verificar_admin()
+    if not empleado:
         return redirect(url_for('index'))
     
     return render_template('admin_dashboard.html', empleado=empleado)
 
-# ===== REPORTES FINANCIEROS =====
-@admin_bp.route('/api/reportes-financieros', methods=['GET'])
-def obtener_reportes_financieros():
+def verificar_admin():
+    """Middleware para verificar que el usuario es administrador"""
     session_id = session.get('session_id')
     if not session_id:
-        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+        return None
     
     empleado = get_session(session_id)
     if not empleado or empleado['rol'] != 'administrador':
+        return None
+    
+    return empleado
+
+# ===== REPORTES FINANCIEROS =====
+@admin_bp.route('/api/reportes-empleados', methods=['GET'])
+def obtener_reportes_empleados():
+    empleado = verificar_admin()
+    if not empleado:
         return jsonify({'success': False, 'message': 'No autorizado'}), 401
     
     fecha_inicio = request.args.get('fecha_inicio')
     fecha_fin = request.args.get('fecha_fin')
     
+    # Si no se proporcionan fechas, usar últimos 30 días
+    if not fecha_inicio or not fecha_fin:
+        fecha_fin = datetime.now().strftime('%Y-%m-%d')
+        fecha_inicio = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+    
     try:
-        reportes = get_reportes_financieros(fecha_inicio, fecha_fin)
+        reportes = get_reportes_financieros_empleados(fecha_inicio, fecha_fin)
         return jsonify({'success': True, 'reportes': reportes})
     except Exception as e:
         print(f"Error al obtener reportes: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({'success': False, 'message': 'Error al obtener reportes'}), 500
 
-# ===== DESCUENTOS =====
-@admin_bp.route('/api/descuentos', methods=['GET'])
-def listar_descuentos():
-    session_id = session.get('session_id')
-    if not session_id:
-        return jsonify({'success': False, 'message': 'No autorizado'}), 401
-    
-    try:
-        descuentos = get_descuentos()
-        return jsonify({'success': True, 'descuentos': descuentos})
-    except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
-
-@admin_bp.route('/api/descuentos', methods=['POST'])
-def crear_descuento_route():
-    session_id = session.get('session_id')
-    if not session_id:
+@admin_bp.route('/api/exportar-reporte-pdf', methods=['POST'])
+def exportar_reporte_pdf():
+    empleado = verificar_admin()
+    if not empleado:
         return jsonify({'success': False, 'message': 'No autorizado'}), 401
     
     data = request.get_json()
-    # TODO: Validar datos
+    reportes = data.get('reportes', [])
+    fecha_inicio = data.get('fecha_inicio')
+    fecha_fin = data.get('fecha_fin')
     
     try:
-        descuento_id = crear_descuento(data)
-        return jsonify({'success': True, 'descuento_id': descuento_id})
+        pdf = generar_reporte_empleados_pdf(reportes, fecha_inicio, fecha_fin)
+        
+        fecha = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"reporte_empleados_{fecha}.pdf"
+        
+        return send_file(
+            io.BytesIO(pdf),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
     except Exception as e:
-        return jsonify({'success': False, 'message': str(e)}), 500
+        print(f"Error al generar PDF: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'Error al generar PDF'}), 500
 
-@admin_bp.route('/api/descuentos/<int:descuento_id>', methods=['PUT'])
-def actualizar_descuento_route(descuento_id):
-    # TODO: Implementar
-    pass
-
-@admin_bp.route('/api/descuentos/<int:descuento_id>', methods=['DELETE'])
-def eliminar_descuento_route(descuento_id):
-    # TODO: Implementar
-    pass
-
-# ===== CONFIGURACIÓN TICKET =====
-@admin_bp.route('/api/configuracion-ticket', methods=['GET'])
-def obtener_configuracion_ticket():
-    # TODO: Implementar
-    pass
-
-@admin_bp.route('/api/configuracion-ticket', methods=['POST'])
-def guardar_configuracion_ticket_route():
-    # TODO: Implementar
-    pass
-
-# ===== CATEGORÍAS =====
-@admin_bp.route('/api/categorias', methods=['POST'])
-def crear_categoria_route():
-    # TODO: Implementar
-    pass
-
-@admin_bp.route('/api/categorias/<int:categoria_id>', methods=['PUT'])
-def actualizar_categoria_route(categoria_id):
-    # TODO: Implementar
-    pass
-
-@admin_bp.route('/api/categorias/<int:categoria_id>', methods=['DELETE'])
-def eliminar_categoria_route(categoria_id):
-    # TODO: Implementar
-    pass
+# ===== CLIENTES =====
+@admin_bp.route('/api/clientes', methods=['GET'])
+def listar_clientes():
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        clientes = get_all_clientes()
+        return jsonify({'success': True, 'clientes': clientes})
+    except Exception as e:
+        print(f"Error al obtener clientes: {e}")
+        return jsonify({'success': False, 'message': 'Error al obtener clientes'}), 500
 
 # ===== PRODUCTOS =====
-@admin_bp.route('/api/productos', methods=['POST'])
-def crear_producto_route():
-    # TODO: Implementar
-    pass
+@admin_bp.route('/api/productos-admin', methods=['GET'])
+def listar_productos():
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        from database.db import get_all_productos
+        productos = get_all_productos()
+        return jsonify({'success': True, 'productos': productos})
+    except Exception as e:
+        print(f"Error al obtener productos: {e}")
+        return jsonify({'success': False, 'message': 'Error al obtener productos'}), 500
 
-@admin_bp.route('/api/productos/<int:producto_id>', methods=['PUT'])
-def actualizar_producto_route(producto_id):
-    # TODO: Implementar
-    pass
+# ===== CATEGORÍAS =====
+@admin_bp.route('/api/categorias-admin', methods=['GET'])
+def listar_categorias():
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        categorias = get_categorias()
+        return jsonify({'success': True, 'categorias': categorias})
+    except Exception as e:
+        print(f"Error al obtener categorías: {e}")
+        return jsonify({'success': False, 'message': 'Error al obtener categorías'}), 500
 
-@admin_bp.route('/api/productos/<int:producto_id>', methods=['DELETE'])
-def eliminar_producto_route(producto_id):
-    # TODO: Implementar
-    pass
-
-# ===== PERFILES/EMPLEADOS =====
-@admin_bp.route('/api/perfiles', methods=['GET'])
-def listar_perfiles():
-    # TODO: Implementar
-    pass
-
-@admin_bp.route('/api/perfiles', methods=['POST'])
-def crear_perfil_route():
-    # TODO: Implementar
-    pass
-
-@admin_bp.route('/api/perfiles/<int:perfil_id>', methods=['PUT'])
-def actualizar_perfil_route(perfil_id):
-    # TODO: Implementar
-    pass
-
-@admin_bp.route('/api/perfiles/<int:perfil_id>', methods=['DELETE'])
-def eliminar_perfil_route(perfil_id):
-    # TODO: Implementar
-    pass
+# ===== EMPLEADOS/PERFILES =====
+@admin_bp.route('/api/empleados', methods=['GET'])
+def listar_empleados():
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        empleados = get_all_empleados()
+        return jsonify({'success': True, 'empleados': empleados})
+    except Exception as e:
+        print(f"Error al obtener empleados: {e}")
+        return jsonify({'success': False, 'message': 'Error al obtener empleados'}), 500

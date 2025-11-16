@@ -5,10 +5,12 @@ from database.db import validate_empleado, get_all_productos, get_categorias, gu
 from database.redis_client import save_session, get_session, save_caja_inicial, save_orden, get_all_ordenes, get_orden, delete_orden, update_orden_status, actualizar_caja, get_caja_actual, get_ordenes_pendientes, get_caja_inicial_original, set_caja_inicial_original, get_fecha_inicio_sesion, set_fecha_inicio_sesion, limpiar_sesion_completa
 from datetime import datetime
 from utils.pdf_generator import generar_recibo_pdf
+from routes.admin_routes import admin_bp
 import io
 
 app = Flask(__name__)
 app.config.from_object(Config)
+app.register_blueprint(admin_bp)
 
 @app.route('/')
 def index():
@@ -76,7 +78,7 @@ def dashboard():
     
     # Redirigir según el rol
     if empleado['rol'] == 'administrador':
-        return redirect(url_for('admin_dashboard'))
+        return redirect(url_for('admin.dashboard'))  # Usar url_for con el namespace del Blueprint
     elif empleado['rol'] == 'cajero':
         return redirect(url_for('cajero'))
     elif empleado['rol'] == 'gerente':
@@ -97,17 +99,17 @@ def gerente_dashboard():
     return render_template('gerente_dashboard.html', empleado=empleado)
 
 
-@app.route('/admin')
-def admin_dashboard():
-    session_id = session.get('session_id')
-    if not session_id:
-        return redirect(url_for('index'))
+# @app.route('/admin')
+# def admin_dashboard():
+#     session_id = session.get('session_id')
+#     if not session_id:
+#         return redirect(url_for('index'))
     
-    empleado = get_session(session_id)
-    if not empleado or empleado['rol'] != 'administrador':
-        return redirect(url_for('index'))
+#     empleado = get_session(session_id)
+#     if not empleado or empleado['rol'] != 'administrador':
+#         return redirect(url_for('index'))
     
-    return render_template('admin_dashboard.html', empleado=empleado)
+#     return render_template('admin_dashboard.html', empleado=empleado)
 
 
 @app.route('/cajero')
