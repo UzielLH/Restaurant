@@ -2,6 +2,7 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 import uuid
 from config import Config
 from database.db import validate_empleado, get_all_productos, get_categorias, guardar_venta, get_venta_by_id, guardar_cierre_caja, get_ventas_por_cajero_hoy, get_cierres_caja_by_cajero, get_ventas_by_cajero, buscar_cliente_por_correo, crear_cliente, get_all_clientes, get_ventas_by_cajero_turno, get_resumen_ventas_turno
+from database.db import get_descuento_activo_cliente, eliminar_descuento_permanente
 from database.redis_client import save_session, get_session, save_caja_inicial, save_orden, get_all_ordenes, get_orden, delete_orden, update_orden_status, actualizar_caja, get_caja_actual, get_ordenes_pendientes, get_caja_inicial_original, set_caja_inicial_original, get_fecha_inicio_sesion, set_fecha_inicio_sesion, limpiar_sesion_completa
 from datetime import datetime
 from utils.pdf_generator import generar_recibo_pdf
@@ -232,7 +233,9 @@ def procesar_pago():
     orden_id = data.get('orden_id')
     pago_con = data.get('pago_con')
     cliente_id = data.get('cliente_id')
-    notas = data.get('notas')
+    descuento_id = data.get('descuento_id')
+    descuento_porcentaje = data.get('descuento_porcentaje')
+    total_original = data.get('total_original')
     
     # Validar datos
     try:
@@ -248,46 +251,78 @@ def procesar_pago():
     if orden.get('status') == 'pagada':
         return jsonify({'success': False, 'message': 'Esta orden ya fue pagada'}), 400
     
-    total = float(orden['total'])
+    # Usar cliente_id de la orden si existe y no viene del frontend
+    if not cliente_id and orden.get('cliente_id'):
+        cliente_id = orden.get('cliente_id')
+    
+    # Si hay descuento, verificar que todavía existe y está activo
+    descuento_aplicado = False
+    descuento_monto = 0
+    total_final = float(orden['total'])
+    notas_descuento = None
+    
+    if descuento_id and cliente_id:
+        try:
+            # Verificar que el descuento sigue activo
+            descuento = get_descuento_activo_cliente(cliente_id)
+            
+            if descuento and descuento['id'] == descuento_id:
+                # Calcular descuento
+                total_sin_descuento = float(total_original) if total_original else total_final
+                descuento_monto = (total_sin_descuento * float(descuento_porcentaje)) / 100
+                total_final = total_sin_descuento - descuento_monto
+                descuento_aplicado = True
+                
+                # Preparar notas del descuento
+                notas_descuento = f"Descuento aplicado: {descuento_porcentaje}% (-${descuento_monto:.2f}). Total original: ${total_sin_descuento:.2f}. Total con descuento: ${total_final:.2f}"
+                
+                if descuento.get('notas'):
+                    notas_descuento += f"\nMotivo del descuento: {descuento['notas']}"
+        except Exception as e:
+            print(f"Error al verificar descuento: {e}")
+            # Continuar sin descuento si hay error
     
     # Validar que el pago sea suficiente
-    if pago_con < total:
+    if pago_con < total_final:
         return jsonify({
             'success': False, 
-            'message': f'El pago es insuficiente. Falta: ${(total - pago_con):.2f}'
+            'message': f'El pago es insuficiente. Falta: ${(total_final - pago_con):.2f}'
         }), 400
     
     # Calcular cambio
-    cambio = pago_con - total
+    cambio = pago_con - total_final
     
-    # NUEVA VALIDACIÓN: Verificar que hay suficiente efectivo para dar cambio
+    # Verificar que hay suficiente efectivo para dar cambio
     if cambio > 0:
         caja_actual = get_caja_actual(session_id)
         if caja_actual is not None:
-            # La caja tendrá el monto actual + el total de la venta - el cambio
-            caja_despues_cambio = caja_actual + total - cambio
+            caja_despues_cambio = caja_actual + total_final - cambio
             if caja_despues_cambio < 0:
                 return jsonify({
                     'success': False,
                     'message': f'No hay suficiente efectivo en caja para dar cambio.\nCambio requerido: ${cambio:.2f}\nEfectivo disponible: ${caja_actual:.2f}\nPor favor solicite un monto más cercano al total.'
                 }), 400
     
-    # Usar cliente_id de la orden si existe y no viene del frontend
-    if not cliente_id and orden.get('cliente_id'):
-        cliente_id = orden.get('cliente_id')
-    
     try:
+        # Combinar notas de la orden con notas del descuento
+        notas_finales = orden.get('notas', '')
+        if notas_descuento:
+            if notas_finales:
+                notas_finales = f"{notas_finales}\n\n{notas_descuento}"
+            else:
+                notas_finales = notas_descuento
+        
         # Guardar venta en PostgreSQL
         venta_id = guardar_venta(
             orden_id=orden_id,
             cajero_id=empleado['id'],
             cajero_nombre=empleado['nombre'],
-            total=total,
+            total=total_final,
             pago_con=pago_con,
             cambio=cambio,
             items=orden['items'],
             cliente_id=cliente_id,
-            notas=notas or orden.get('notas')
+            notas=notas_finales
         )
         
         # Calcular puntos ganados (5% del total) - SOLO para pago con efectivo
@@ -295,16 +330,25 @@ def procesar_pago():
         puntos_nuevos = None
         if cliente_id:
             from database.db import agregar_puntos_cliente
-            puntos_ganados = int(total * 0.05)  # 5% en puntos
+            puntos_ganados = int(total_final * 0.05)  # 5% en puntos del total con descuento
             puntos_nuevos = agregar_puntos_cliente(cliente_id, puntos_ganados)
         
+        # Si hubo descuento, eliminarlo de la base de datos
+        if descuento_aplicado and descuento_id:
+            try:
+                eliminar_descuento_permanente(descuento_id)
+                print(f"Descuento {descuento_id} eliminado exitosamente")
+            except Exception as e:
+                print(f"Error al eliminar descuento: {e}")
+                # No fallar la transacción si hay error al eliminar el descuento
+        
         # Actualizar monto en caja (sumar el total de la venta)
-        caja_actualizada = actualizar_caja(session_id, total)
+        caja_actualizada = actualizar_caja(session_id, total_final)
         
         # Actualizar estado de orden en Redis
         update_orden_status(orden_id, 'pagada')
         
-        return jsonify({
+        response_data = {
             'success': True,
             'message': 'Pago procesado exitosamente',
             'venta_id': venta_id,
@@ -312,7 +356,16 @@ def procesar_pago():
             'caja_actual': caja_actualizada,
             'puntos_ganados': puntos_ganados if cliente_id else None,
             'puntos_nuevos': puntos_nuevos
-        })
+        }
+        
+        # Agregar información del descuento si fue aplicado
+        if descuento_aplicado:
+            response_data['descuento_aplicado'] = True
+            response_data['descuento_porcentaje'] = descuento_porcentaje
+            response_data['descuento_monto'] = descuento_monto
+            response_data['total_original'] = total_original if total_original else total_final + descuento_monto
+        
+        return jsonify(response_data)
         
     except Exception as e:
         print(f"Error al procesar pago: {e}")
@@ -695,6 +748,34 @@ def cancelar_orden(orden_id):
         return jsonify({
             'success': False,
             'message': 'Error al cancelar la orden'
+        }), 500
+
+# Agregar esta nueva ruta después de las rutas existentes
+@app.route('/api/descuento-cliente/<int:cliente_id>', methods=['GET'])
+def obtener_descuento_cliente(cliente_id):
+    """Obtiene el descuento activo de un cliente"""
+    session_id = session.get('session_id')
+    if not session_id:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        descuento = get_descuento_activo_cliente(cliente_id)
+        
+        if descuento:
+            return jsonify({
+                'success': True,
+                'descuento': descuento
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'No hay descuento activo para este cliente'
+            })
+    except Exception as e:
+        print(f"Error al obtener descuento: {e}")
+        return jsonify({
+            'success': False,
+            'message': 'Error al obtener descuento'
         }), 500
 
 if __name__ == '__main__':

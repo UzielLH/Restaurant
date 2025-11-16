@@ -549,48 +549,89 @@ body {
 
 /* Modal de Pago */
 .modal-pago {
-    position: relative;
     background: white;
     border-radius: 15px;
     width: 90%;
     max-width: 500px;
-    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+    max-height: 90vh; /* Altura máxima del 90% del viewport */
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    position: relative;
+    z-index: 1001;
+}
+
+.modal-pago .modal-header {
+    padding: 20px 25px;
+    border-bottom: 2px solid #f0f0f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0; /* No se reduce cuando hay scroll */
+}
+
+.modal-pago .modal-body {
+    padding: 25px;
+    overflow-y: auto; /* Scroll vertical */
+    overflow-x: hidden;
+    flex: 1; /* Toma todo el espacio disponible */
+}
+
+/* Estilos para el scrollbar (opcional, para que se vea mejor) */
+.modal-pago .modal-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.modal-pago .modal-body::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.modal-pago .modal-body::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.modal-pago .modal-body::-webkit-scrollbar-thumb:hover {
+    background: #555;
 }
 
 .pago-info {
-    padding: 20px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
 .pago-item {
     display: flex;
     justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
+    padding: 15px;
     background: #f8f9fa;
-    border-radius: 10px;
-    margin-bottom: 20px;
+    border-radius: 8px;
 }
 
 .pago-label {
-    font-size: 18px;
+    font-size: 16px;
     color: #666;
+    font-weight: 500;
 }
 
 .pago-value {
-    font-size: 32px;
+    font-size: 24px;
     font-weight: bold;
     color: #667eea;
 }
 
 .pago-input-group {
-    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .pago-input-group label {
-    display: block;
-    margin-bottom: 10px;
-    font-weight: bold;
-    color: #333;
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
 }
 
 .input-wrapper {
@@ -602,95 +643,93 @@ body {
 .input-wrapper .currency {
     position: absolute;
     left: 15px;
-    font-size: 24px;
+    font-size: 20px;
     color: #666;
     font-weight: bold;
 }
 
-.pago-input-group input {
+#pago-con-input {
     width: 100%;
-    padding: 15px 15px 15px 40px;
-    font-size: 24px;
+    padding: 15px 15px 15px 35px;
+    font-size: 20px;
     border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    transition: border-color 0.3s;
+    border-radius: 8px;
+    transition: all 0.3s ease;
 }
 
-.pago-input-group input:focus {
+#pago-con-input:focus {
     outline: none;
     border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
 .pago-shortcuts {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
     gap: 10px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
 }
 
 .btn-shortcut {
-    flex: 1;
-    min-width: 80px;
-    padding: 10px;
-    background: #f0f0f0;
+    padding: 12px;
+    background: #f8f9fa;
     border: 2px solid #e0e0e0;
     border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #667eea;
     cursor: pointer;
-    font-weight: bold;
-    transition: all 0.3s;
+    transition: all 0.2s ease;
 }
 
 .btn-shortcut:hover {
     background: #667eea;
     color: white;
     border-color: #667eea;
+    transform: translateY(-2px);
 }
 
 .pago-cambio {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 20px;
-    background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
-    border-radius: 10px;
+    border-radius: 12px;
     text-align: center;
-    margin-bottom: 20px;
-    animation: slideDown 0.3s ease;
-}
-
-@keyframes slideDown {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
 }
 
 .cambio-label {
-    color: white;
-    font-size: 16px;
-    margin-bottom: 5px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 8px;
 }
 
 .cambio-value {
-    color: white;
-    font-size: 36px;
+    font-size: 32px;
     font-weight: bold;
+    color: white;
 }
 
 .pago-error {
-    padding: 15px;
-    background: #ffe0e0;
-    color: #d63031;
+    background: #ff4757;
+    color: white;
+    padding: 12px;
     border-radius: 8px;
-    margin-bottom: 20px;
-    font-weight: bold;
     text-align: center;
+    font-size: 14px;
+}
+
+.puntos-info {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 15px;
 }
 
 .pago-actions {
     display: flex;
     gap: 10px;
+    margin-top: 25px;
+    flex-shrink: 0; /* Los botones no se reducen */
 }
 
 .btn-confirmar-pago,
@@ -700,18 +739,19 @@ body {
     border: none;
     border-radius: 8px;
     font-size: 16px;
-    font-weight: bold;
+    font-weight: 600;
     cursor: pointer;
-    transition: all 0.3s;
+    transition: all 0.3s ease;
 }
 
 .btn-confirmar-pago {
-    background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
 }
 
 .btn-confirmar-pago:hover {
-    transform: scale(1.02);
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
 }
 
 .btn-confirmar-pago:disabled {
@@ -721,12 +761,12 @@ body {
 }
 
 .btn-cancelar-pago {
-    background: #f0f0f0;
-    color: #333;
+    background: #f1f2f6;
+    color: #666;
 }
 
 .btn-cancelar-pago:hover {
-    background: #e0e0e0;
+    background: #e4e6eb;
 }
 
 /* Modal de Cierre de Caja */

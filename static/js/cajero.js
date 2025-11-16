@@ -2,6 +2,8 @@ let cart = [];
 let ordenActualPago = null;
 let clienteSeleccionado = null;
 let todosLosClientes = [];
+let descuentoDisponible = null;
+let descuentoAplicado = false;
 function filterCategory(categoria) {
     const products = document.querySelectorAll('.product-card');
     const buttons = document.querySelectorAll('.category-btn');
@@ -291,35 +293,85 @@ async function cargarClienteParaPago(clienteId) {
     }
 }
 
-function abrirModalPago(orden) {
+async function abrirModalPago(orden) {
     const modal = document.getElementById('pago-modal');
     const totalSpan = document.getElementById('pago-total');
     const pagoInput = document.getElementById('pago-con-input');
     const cambioContainer = document.getElementById('pago-cambio-container');
     const errorDiv = document.getElementById('pago-error');
     
+    // Reset de variables de descuento
+    descuentoDisponible = null;
+    descuentoAplicado = false;
+    
+    // Verificar si hay descuento disponible (pero NO aplicarlo automáticamente)
+    if (orden.cliente_id || clienteSeleccionado) {
+        const clienteId = orden.cliente_id || (clienteSeleccionado ? clienteSeleccionado.id : null);
+        descuentoDisponible = await verificarDescuentoCliente(clienteId);
+    }
+    
+    // Guardar el total original sin descuento
+    ordenActualPago.total_original = parseFloat(orden.total);
+    ordenActualPago.total = parseFloat(orden.total);
+    
     // Resetear modal
-    totalSpan.textContent = `$${parseFloat(orden.total).toFixed(2)}`;
+    totalSpan.textContent = `${ordenActualPago.total.toFixed(2)}`;
     pagoInput.value = '';
     cambioContainer.style.display = 'none';
     errorDiv.style.display = 'none';
     
-    // Mostrar información de puntos si hay cliente
+    // Mostrar información de descuento/puntos
     const puntosInfoDiv = document.getElementById('puntos-info');
     
-    // Verificar si hay cliente seleccionado Y la orden tiene cliente_id
+    // Si hay cliente, mostrar opciones disponibles
     if (clienteSeleccionado && (orden.cliente_id || clienteSeleccionado.id)) {
-        // Calcular puntos necesarios basado en precio_puntos de cada producto
+        // Calcular puntos necesarios para pago con puntos
         const puntosNecesarios = calcularPuntosTotales(orden.items);
         const puntosCliente = clienteSeleccionado.puntos_acumulados || 0;
         const puedeUsarPuntos = puntosCliente >= puntosNecesarios;
         
-        puntosInfoDiv.innerHTML = `
+        let htmlContent = `
             <div class="puntos-detalle">
                 <div class="puntos-item">
                     <span class="puntos-label">👤 Cliente:</span>
                     <span class="puntos-value">${clienteSeleccionado.nombre}</span>
                 </div>
+        `;
+        
+        // Mostrar descuento disponible (SIN aplicarlo)
+        if (descuentoDisponible) {
+            const montoDescuento = (ordenActualPago.total_original * descuentoDisponible.porcentaje_descuento) / 100;
+            const totalConDescuento = ordenActualPago.total_original - montoDescuento;
+            
+            htmlContent += `
+                <div style="background: #fff3e0; border: 2px dashed #ff9800; border-radius: 8px; padding: 12px; margin: 10px 0;">
+                    <div style="text-align: center; margin-bottom: 8px;">
+                        <span style="font-size: 20px;">🎁</span>
+                        <strong style="color: #e65100; display: block; margin-top: 5px;">¡Descuento Disponible!</strong>
+                    </div>
+                    <div style="font-size: 13px; color: #666; margin: 8px 0;">
+                        <div style="display: flex; justify-content: space-between; margin: 4px 0;">
+                            <span>Descuento:</span>
+                            <strong style="color: #ff9800;">${descuentoDisponible.porcentaje_descuento}%</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin: 4px 0;">
+                            <span>Ahorras:</span>
+                            <strong style="color: #f44336;">${montoDescuento.toFixed(2)}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin: 8px 0; padding-top: 8px; border-top: 1px solid #ddd;">
+                            <span>Pagarías:</span>
+                            <strong style="color: #2e7d32; font-size: 16px;">${totalConDescuento.toFixed(2)}</strong>
+                        </div>
+                    </div>
+                    <button class="btn-aplicar-descuento" onclick="aplicarDescuento()" style="width: 100%; padding: 10px; background: #ff9800; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 8px;">
+                        🎉 Aplicar Descuento
+                    </button>
+                </div>
+            `;
+        }
+        
+        // Mostrar información de puntos
+        htmlContent += `
                 <div class="puntos-item">
                     <span class="puntos-label">💎 Puntos disponibles:</span>
                     <span class="puntos-value ${puedeUsarPuntos ? 'suficiente' : 'insuficiente'}">${puntosCliente} pts</span>
@@ -339,6 +391,8 @@ function abrirModalPago(orden) {
                 `}
             </div>
         `;
+        
+        puntosInfoDiv.innerHTML = htmlContent;
         puntosInfoDiv.style.display = 'block';
     } else {
         puntosInfoDiv.innerHTML = `
@@ -355,6 +409,24 @@ function abrirModalPago(orden) {
     
     // Focus en el input después de mostrar el modal
     setTimeout(() => pagoInput.focus(), 100);
+}
+
+
+async function verificarDescuentoCliente(clienteId) {
+    if (!clienteId) return null;
+    
+    try {
+        const response = await fetch(`/api/descuento-cliente/${clienteId}`);
+        const data = await response.json();
+        
+        if (data.success && data.descuento) {
+            return data.descuento;
+        }
+        return null;
+    } catch (error) {
+        console.error('Error al verificar descuento:', error);
+        return null;
+    }
 }
 
 // Nueva función para calcular puntos totales basado en precio_puntos
@@ -482,16 +554,26 @@ async function confirmarPago() {
     btnConfirmar.textContent = 'Procesando...';
     
     try {
+        // Preparar datos del pago
+        const pagoData = {
+            orden_id: ordenActualPago.orden_id,
+            pago_con: pagoCon,
+            cliente_id: ordenActualPago.cliente_id || null
+        };
+        
+        // Si hay descuento APLICADO, incluirlo
+        if (descuentoAplicado && ordenActualPago.descuento_id) {
+            pagoData.descuento_id = ordenActualPago.descuento_id;
+            pagoData.descuento_porcentaje = ordenActualPago.descuento_porcentaje;
+            pagoData.total_original = ordenActualPago.total_original;
+        }
+        
         const response = await fetch('/api/procesar-pago', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                orden_id: ordenActualPago.orden_id,
-                pago_con: pagoCon,
-                cliente_id: ordenActualPago.cliente_id || null  // Enviar cliente_id si existe
-            })
+            body: JSON.stringify(pagoData)
         });
         
         const data = await response.json();
@@ -499,11 +581,20 @@ async function confirmarPago() {
         if (data.success) {
             const cambio = data.cambio;
             let mensaje = 'Pago procesado exitosamente\n\n';
-            mensaje += `Total: $${ordenActualPago.total.toFixed(2)}\n`;
-            mensaje += `Pagó con: $${pagoCon.toFixed(2)}\n`;
+            
+            // Si hubo descuento aplicado, mostrarlo
+            if (data.descuento_aplicado) {
+                mensaje += `🎉 DESCUENTO APLICADO 🎉\n`;
+                mensaje += `Total Original: ${data.total_original.toFixed(2)}\n`;
+                mensaje += `Descuento (${data.descuento_porcentaje}%): -${data.descuento_monto.toFixed(2)}\n`;
+                mensaje += `━━━━━━━━━━━━━━━━━━━━\n`;
+            }
+            
+            mensaje += `Total: ${ordenActualPago.total.toFixed(2)}\n`;
+            mensaje += `Pagó con: ${pagoCon.toFixed(2)}\n`;
             
             if (cambio > 0) {
-                mensaje += `Cambio: $${cambio.toFixed(2)}\n`;
+                mensaje += `Cambio: ${cambio.toFixed(2)}\n`;
             }
             
             if (data.puntos_ganados) {
@@ -522,6 +613,10 @@ async function confirmarPago() {
             if (clienteSeleccionado && data.puntos_nuevos) {
                 clienteSeleccionado.puntos_acumulados = data.puntos_nuevos;
             }
+            
+            // Resetear variables de descuento
+            descuentoDisponible = null;
+            descuentoAplicado = false;
         } else {
             alert(data.message);
             btnConfirmar.disabled = false;
@@ -534,6 +629,7 @@ async function confirmarPago() {
         btnConfirmar.textContent = 'Confirmar Pago';
     }
 }
+
 function descargarRecibo(ventaId) {
     // Crear un enlace temporal para descargar el PDF
     const link = document.createElement('a');
@@ -888,7 +984,176 @@ async function guardarNuevoCliente() {
         console.error(error);
     }
 }
-// ...existing code...
+
+function aplicarDescuento() {
+    if (!descuentoDisponible || descuentoAplicado) return;
+    
+    const totalOriginal = ordenActualPago.total_original;
+    const montoDescuento = (totalOriginal * descuentoDisponible.porcentaje_descuento) / 100;
+    const totalConDescuento = totalOriginal - montoDescuento;
+    
+    // Aplicar descuento
+    ordenActualPago.total = totalConDescuento;
+    ordenActualPago.descuento_id = descuentoDisponible.id;
+    ordenActualPago.descuento_porcentaje = descuentoDisponible.porcentaje_descuento;
+    ordenActualPago.descuento_monto = montoDescuento;
+    descuentoAplicado = true;
+    
+    // Actualizar el total mostrado
+    document.getElementById('pago-total').textContent = `${totalConDescuento.toFixed(2)}`;
+    
+    // Actualizar la interfaz para mostrar que el descuento está aplicado
+    const puntosInfoDiv = document.getElementById('puntos-info');
+    
+    let htmlContent = `
+        <div class="puntos-detalle">
+            <div class="puntos-item">
+                <span class="puntos-label">👤 Cliente:</span>
+                <span class="puntos-value">${clienteSeleccionado ? clienteSeleccionado.nombre : 'N/A'}</span>
+            </div>
+            <div style="background: #e8f5e9; border: 2px solid #4caf50; border-radius: 8px; padding: 12px; margin: 10px 0;">
+                <div style="text-align: center; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">✅</span>
+                    <strong style="color: #2e7d32; display: block; margin-top: 5px;">¡Descuento Aplicado!</strong>
+                </div>
+                <div style="font-size: 13px; color: #666; margin: 8px 0;">
+                    <div style="display: flex; justify-content: space-between; margin: 4px 0;">
+                        <span>Total Original:</span>
+                        <span style="text-decoration: line-through;">${totalOriginal.toFixed(2)}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin: 4px 0;">
+                        <span>Descuento (${descuentoDisponible.porcentaje_descuento}%):</span>
+                        <strong style="color: #f44336;">-${montoDescuento.toFixed(2)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin: 8px 0; padding-top: 8px; border-top: 2px solid #4caf50;">
+                        <span style="font-weight: bold;">Total a Pagar:</span>
+                        <strong style="color: #2e7d32; font-size: 16px;">${totalConDescuento.toFixed(2)}</strong>
+                    </div>
+                </div>
+                <button class="btn-cancelar-descuento" onclick="cancelarDescuento()" style="width: 100%; padding: 8px; background: #f44336; color: white; border: none; border-radius: 6px; cursor: pointer; margin-top: 8px;">
+                    ❌ Cancelar Descuento
+                </button>
+                <div style="background: #fff3cd; border-radius: 4px; padding: 6px; margin-top: 8px; text-align: center; color: #856404; font-size: 11px;">
+                    ⚠️ Este descuento se eliminará después del pago
+                </div>
+            </div>
+    `;
+    
+    // Agregar información de puntos si es necesario
+    if (clienteSeleccionado) {
+        const puntosNecesarios = calcularPuntosTotales(ordenActualPago.items);
+        const puntosCliente = clienteSeleccionado.puntos_acumulados || 0;
+        const puedeUsarPuntos = puntosCliente >= puntosNecesarios;
+        
+        htmlContent += `
+            <div class="puntos-item" style="margin-top: 10px;">
+                <span class="puntos-label">💎 Puntos disponibles:</span>
+                <span class="puntos-value ${puedeUsarPuntos ? 'suficiente' : 'insuficiente'}">${puntosCliente} pts</span>
+            </div>
+            <div class="puntos-item">
+                <span class="puntos-label">🎫 Puntos necesarios:</span>
+                <span class="puntos-value">${puntosNecesarios} pts</span>
+            </div>
+        `;
+    }
+    
+    htmlContent += `</div>`;
+    
+    puntosInfoDiv.innerHTML = htmlContent;
+    
+    // Limpiar campos de pago y recalcular
+    document.getElementById('pago-con-input').value = '';
+    document.getElementById('pago-cambio-container').style.display = 'none';
+    document.getElementById('pago-error').style.display = 'none';
+}
+
+function cancelarDescuento() {
+    if (!descuentoAplicado) return;
+    
+    // Restaurar total original
+    ordenActualPago.total = ordenActualPago.total_original;
+    delete ordenActualPago.descuento_id;
+    delete ordenActualPago.descuento_porcentaje;
+    delete ordenActualPago.descuento_monto;
+    descuentoAplicado = false;
+    
+    // Actualizar el total mostrado
+    document.getElementById('pago-total').textContent = `${ordenActualPago.total_original.toFixed(2)}`;
+    
+    // Volver a mostrar el botón de aplicar descuento
+    const puntosInfoDiv = document.getElementById('puntos-info');
+    const montoDescuento = (ordenActualPago.total_original * descuentoDisponible.porcentaje_descuento) / 100;
+    const totalConDescuento = ordenActualPago.total_original - montoDescuento;
+    
+    let htmlContent = `
+        <div class="puntos-detalle">
+            <div class="puntos-item">
+                <span class="puntos-label">👤 Cliente:</span>
+                <span class="puntos-value">${clienteSeleccionado ? clienteSeleccionado.nombre : 'N/A'}</span>
+            </div>
+            <div style="background: #fff3e0; border: 2px dashed #ff9800; border-radius: 8px; padding: 12px; margin: 10px 0;">
+                <div style="text-align: center; margin-bottom: 8px;">
+                    <span style="font-size: 20px;">🎁</span>
+                    <strong style="color: #e65100; display: block; margin-top: 5px;">¡Descuento Disponible!</strong>
+                </div>
+                <div style="font-size: 13px; color: #666; margin: 8px 0;">
+                    <div style="display: flex; justify-content: space-between; margin: 4px 0;">
+                        <span>Descuento:</span>
+                        <strong style="color: #ff9800;">${descuentoDisponible.porcentaje_descuento}%</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin: 4px 0;">
+                        <span>Ahorras:</span>
+                        <strong style="color: #f44336;">${montoDescuento.toFixed(2)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; margin: 8px 0; padding-top: 8px; border-top: 1px solid #ddd;">
+                        <span>Pagarías:</span>
+                        <strong style="color: #2e7d32; font-size: 16px;">${totalConDescuento.toFixed(2)}</strong>
+                    </div>
+                </div>
+                <button class="btn-aplicar-descuento" onclick="aplicarDescuento()" style="width: 100%; padding: 10px; background: #ff9800; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 8px;">
+                    🎉 Aplicar Descuento
+                </button>
+            </div>
+    `;
+    
+    // Agregar información de puntos
+    if (clienteSeleccionado) {
+        const puntosNecesarios = calcularPuntosTotales(ordenActualPago.items);
+        const puntosCliente = clienteSeleccionado.puntos_acumulados || 0;
+        const puedeUsarPuntos = puntosCliente >= puntosNecesarios;
+        
+        htmlContent += `
+            <div class="puntos-item">
+                <span class="puntos-label">💎 Puntos disponibles:</span>
+                <span class="puntos-value ${puedeUsarPuntos ? 'suficiente' : 'insuficiente'}">${puntosCliente} pts</span>
+            </div>
+            <div class="puntos-item">
+                <span class="puntos-label">🎫 Puntos necesarios:</span>
+                <span class="puntos-value">${puntosNecesarios} pts</span>
+            </div>
+            ${puedeUsarPuntos ? `
+                <button class="btn-pagar-puntos" onclick="pagarConPuntos()">
+                    💳 Pagar con Puntos
+                </button>
+            ` : `
+                <div class="puntos-insuficientes">
+                    ⚠️ Puntos insuficientes. Faltan ${puntosNecesarios - puntosCliente} puntos.
+                </div>
+            `}
+        `;
+    }
+    
+    htmlContent += `</div>`;
+    
+    puntosInfoDiv.innerHTML = htmlContent;
+    
+    // Limpiar campos de pago y recalcular
+    document.getElementById('pago-con-input').value = '';
+    document.getElementById('pago-cambio-container').style.display = 'none';
+    document.getElementById('pago-error').style.display = 'none';
+}
+
+
 
 async function pagarConPuntos() {
     if (!ordenActualPago || !clienteSeleccionado) return;
