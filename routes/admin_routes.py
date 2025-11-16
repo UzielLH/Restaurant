@@ -7,6 +7,7 @@ from database.db import (
     get_all_clientes,
     get_all_productos,
     get_categorias,
+    get_all_categorias_admin, 
     crear_descuento_cliente,
     get_all_descuentos,
     eliminar_descuento_permanente
@@ -127,7 +128,7 @@ def listar_categorias():
         return jsonify({'success': False, 'message': 'No autorizado'}), 401
     
     try:
-        categorias = get_categorias()
+        categorias = get_all_categorias_admin()  # ← Cambiar a usar la nueva función
         return jsonify({'success': True, 'categorias': categorias})
     except Exception as e:
         print(f"Error al obtener categorías: {e}")
@@ -262,3 +263,77 @@ def actualizar_configuracion_ticket_route():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': f'Error al actualizar configuración: {str(e)}'}), 500
+    
+    
+# ===== CATEGORÍAS =====
+@admin_bp.route('/api/categorias', methods=['POST'])
+def crear_categoria():
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    data = request.get_json()
+    nombre = data.get('nombre')
+    descripcion = data.get('descripcion')
+    orden = data.get('orden', 0)
+    
+    if not nombre:
+        return jsonify({'success': False, 'message': 'El nombre es requerido'}), 400
+    
+    try:
+        from database.db import crear_categoria_db
+        categoria_id = crear_categoria_db(nombre, descripcion, orden)
+        return jsonify({'success': True, 'message': 'Categoría creada exitosamente', 'categoria_id': categoria_id})
+    except Exception as e:
+        print(f"Error al crear categoría: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/categorias/<int:categoria_id>', methods=['PUT'])
+def actualizar_categoria(categoria_id):
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    data = request.get_json()
+    nombre = data.get('nombre')
+    descripcion = data.get('descripcion')
+    orden = data.get('orden', 0)
+    
+    if not nombre:
+        return jsonify({'success': False, 'message': 'El nombre es requerido'}), 400
+    
+    try:
+        from database.db import actualizar_categoria_db
+        actualizar_categoria_db(categoria_id, nombre, descripcion, orden)
+        return jsonify({'success': True, 'message': 'Categoría actualizada exitosamente'})
+    except Exception as e:
+        print(f"Error al actualizar categoría: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/categorias/<int:categoria_id>', methods=['DELETE'])
+def eliminar_categoria_route(categoria_id):
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        from database.db import eliminar_categoria_db
+        eliminar_categoria_db(categoria_id)
+        return jsonify({'success': True, 'message': 'Categoría eliminada exitosamente'})
+    except Exception as e:
+        print(f"Error al eliminar categoría: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/categorias/<int:categoria_id>/activar', methods=['PUT'])
+def activar_categoria(categoria_id):
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        from database.db import activar_categoria_db
+        activar_categoria_db(categoria_id)
+        return jsonify({'success': True, 'message': 'Categoría activada exitosamente'})
+    except Exception as e:
+        print(f"Error al activar categoría: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500

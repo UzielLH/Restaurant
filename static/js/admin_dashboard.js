@@ -818,3 +818,169 @@ window.onclick = function(event) {
         modalCliente.style.display = 'none';
     }
 }
+
+// ===== CATEGORÍAS =====
+async function cargarCategorias() {
+    try {
+        const response = await fetch('/admin/api/categorias-admin');
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarCategorias(data.categorias);
+        } else {
+            alert('Error al cargar categorías: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al cargar categorías:', error);
+        alert('Error al cargar categorías');
+    }
+}
+
+function mostrarCategorias(categorias) {
+    const grid = document.getElementById('categorias-grid');
+    grid.innerHTML = '';
+    
+    if (categorias.length === 0) {
+        grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 40px; color: #666;">No hay categorías registradas</p>';
+        return;
+    }
+    
+    categorias.forEach(cat => {
+        const card = document.createElement('div');
+        card.className = 'category-card';
+        
+        // Determinar el badge según el estado
+        const estadoBadge = cat.activo ? 
+            '<span class="badge badge-success">Activa</span>' : 
+            '<span class="badge badge-secondary">Inactiva</span>';
+        
+        card.innerHTML = `
+            <h3>${cat.nombre} ${estadoBadge}</h3>
+            <p>${cat.descripcion || 'Sin descripción'}</p>
+            <div class="category-info">
+                <span>Orden: ${cat.orden}</span>
+                <span>ID: ${cat.id}</span>
+            </div>
+            <div class="category-actions">
+                <button class="btn btn-primary btn-sm" onclick="editarCategoria(${cat.id}, '${cat.nombre.replace(/'/g, "\\'")}', '${(cat.descripcion || '').replace(/'/g, "\\'")}', ${cat.orden})">
+                    ✏️ Editar
+                </button>
+                ${cat.activo ? 
+                    `<button class="btn btn-danger btn-sm" onclick="eliminarCategoria(${cat.id})">
+                        🗑️ Desactivar
+                    </button>` :
+                    `<button class="btn btn-success btn-sm" onclick="activarCategoria(${cat.id})">
+                        ✅ Activar
+                    </button>`
+                }
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function mostrarModalCategoria() {
+    document.getElementById('form-categoria').reset();
+    document.getElementById('categoria-id').value = '';
+    document.getElementById('modal-categoria-titulo').textContent = 'Nueva Categoría';
+    document.getElementById('modal-categoria').style.display = 'block';
+}
+
+function editarCategoria(id, nombre, descripcion, orden) {
+    document.getElementById('categoria-id').value = id;
+    document.getElementById('categoria-nombre').value = nombre;
+    document.getElementById('categoria-descripcion').value = descripcion;
+    document.getElementById('categoria-orden').value = orden;
+    document.getElementById('modal-categoria-titulo').textContent = 'Editar Categoría';
+    document.getElementById('modal-categoria').style.display = 'block';
+}
+
+function cerrarModalCategoria() {
+    document.getElementById('modal-categoria').style.display = 'none';
+}
+
+document.getElementById('form-categoria')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const categoriaId = document.getElementById('categoria-id').value;
+    const nombre = document.getElementById('categoria-nombre').value;
+    const descripcion = document.getElementById('categoria-descripcion').value;
+    const orden = document.getElementById('categoria-orden').value || 0;
+    
+    const url = categoriaId ? 
+        `/admin/api/categorias/${categoriaId}` : 
+        '/admin/api/categorias';
+    
+    const method = categoriaId ? 'PUT' : 'POST';
+    
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                nombre: nombre,
+                descripcion: descripcion,
+                orden: parseInt(orden)
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✅ Categoría ${categoriaId ? 'actualizada' : 'creada'} exitosamente`);
+            cerrarModalCategoria();
+            cargarCategorias();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al guardar categoría:', error);
+        alert('❌ Error al guardar categoría');
+    }
+});
+
+async function eliminarCategoria(categoriaId) {
+    if (!confirm('¿Desactivar esta categoría? Los productos asociados no se mostrarán en el sistema.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/admin/api/categorias/${categoriaId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Categoría desactivada exitosamente');
+            cargarCategorias();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al desactivar categoría:', error);
+        alert('❌ Error al desactivar categoría');
+    }
+}
+
+async function activarCategoria(categoriaId) {
+    try {
+        const response = await fetch(`/admin/api/categorias/${categoriaId}/activar`, {
+            method: 'PUT'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Categoría activada exitosamente');
+            cargarCategorias();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al activar categoría:', error);
+        alert('❌ Error al activar categoría');
+    }
+}

@@ -82,12 +82,12 @@ def get_productos_by_categoria(categoria):
     return result if result else []
 
 def get_categorias():
-    """Obtiene todas las categorías activas"""
-    conn = get_db_connection()  # Cambiar get_connection() por get_db_connection()
+    """Obtiene todas las categorías activas (para cajero y clientes)"""
+    conn = get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     
     cursor.execute("""
-        SELECT id, nombre, descripcion, orden
+        SELECT id, nombre, descripcion, orden, activo
         FROM categoria
         WHERE activo = true
         ORDER BY orden, nombre
@@ -98,6 +98,29 @@ def get_categorias():
     conn.close()
     
     return [dict(cat) for cat in categorias]
+
+def get_all_categorias_admin():
+    """Obtiene TODAS las categorías (activas e inactivas) para administración"""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cursor.execute("""
+        SELECT id, nombre, descripcion, orden, activo, created_at
+        FROM categoria
+        ORDER BY orden, nombre
+    """)
+    
+    categorias = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    result = []
+    for cat in categorias:
+        categoria = dict(cat)
+        categoria['created_at'] = categoria['created_at'].strftime('%Y-%m-%d %H:%M:%S') if categoria.get('created_at') else None
+        result.append(categoria)
+    
+    return result
 
 
 
@@ -979,6 +1002,96 @@ def actualizar_configuracion_ticket(empleado_id, config_data):
         cursor.close()
         conn.close()
         return config_id
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e
+
+def crear_categoria_db(nombre, descripcion, orden):
+    """Crea una nueva categoría"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            """
+            INSERT INTO categoria (nombre, descripcion, orden)
+            VALUES (%s, %s, %s)
+            RETURNING id
+            """,
+            (nombre, descripcion, orden)
+        )
+        categoria_id = cursor.fetchone()[0]
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return categoria_id
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e
+
+def actualizar_categoria_db(categoria_id, nombre, descripcion, orden):
+    """Actualiza una categoría existente"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            """
+            UPDATE categoria 
+            SET nombre = %s, descripcion = %s, orden = %s
+            WHERE id = %s
+            """,
+            (nombre, descripcion, orden, categoria_id)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e
+
+def eliminar_categoria_db(categoria_id):
+    """Elimina una categoría (la marca como inactiva)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Marcar como inactiva en lugar de eliminar
+        cursor.execute(
+            "UPDATE categoria SET activo = false WHERE id = %s",
+            (categoria_id,)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e
+
+def activar_categoria_db(categoria_id):
+    """Activa una categoría inactiva"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            "UPDATE categoria SET activo = true WHERE id = %s",
+            (categoria_id,)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
     except Exception as e:
         conn.rollback()
         cursor.close()
