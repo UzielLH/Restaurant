@@ -479,7 +479,7 @@ def get_all_clientes():
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     
     cursor.execute(
-        "SELECT id, nombre, correo, puntos_acumulados, ultima_visita FROM cliente ORDER BY nombre"
+        "SELECT id, nombre, correo, puntos_acumulados, ultima_visita, created_at FROM cliente ORDER BY nombre"
     )
     clientes = cursor.fetchall()
     
@@ -490,6 +490,7 @@ def get_all_clientes():
     for c in clientes:
         cliente = dict(c)
         cliente['ultima_visita'] = cliente['ultima_visita'].strftime('%Y-%m-%d %H:%M:%S') if cliente['ultima_visita'] else None
+        cliente['created_at'] = cliente['created_at'].strftime('%Y-%m-%d %H:%M:%S') if cliente['created_at'] else None
         result.append(cliente)
     
     return result
@@ -502,7 +503,7 @@ def get_cliente_by_id(cliente_id):
     
     try:
         cursor.execute(
-            "SELECT id, nombre, correo, puntos_acumulados, ultima_visita FROM cliente WHERE id = %s",
+            "SELECT id, nombre, correo, puntos_acumulados, ultima_visita, created_at FROM cliente WHERE id = %s",
             (cliente_id,)
         )
         cliente = cursor.fetchone()
@@ -513,6 +514,7 @@ def get_cliente_by_id(cliente_id):
         if cliente:
             result = dict(cliente)
             result['ultima_visita'] = result['ultima_visita'].strftime('%Y-%m-%d %H:%M:%S') if result['ultima_visita'] else None
+            result['created_at'] = result['created_at'].strftime('%Y-%m-%d %H:%M:%S') if result['created_at'] else None
             return result
         return None
     except Exception as e:
@@ -520,6 +522,7 @@ def get_cliente_by_id(cliente_id):
         cursor.close()
         conn.close()
         return None
+
     
 def descontar_puntos_cliente(cliente_id, puntos):
     """Descuenta puntos de un cliente"""
@@ -827,6 +830,50 @@ def eliminar_descuento_permanente(descuento_id):
         return True
     except Exception as e:
         conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e
+
+def get_ordenes_por_cliente(cliente_id):
+    """Obtiene todas las órdenes de un cliente específico"""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    try:
+        cursor.execute("""
+            SELECT 
+                id,
+                orden_id,
+                cajero_nombre,
+                total,
+                pago_con,
+                cambio,
+                items,
+                fecha_venta,
+                notas
+            FROM ventas
+            WHERE cliente_id = %s
+            ORDER BY fecha_venta DESC
+        """, (cliente_id,))
+        
+        ordenes = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        result = []
+        for orden in ordenes:
+            orden_dict = dict(orden)
+            orden_dict['total'] = float(orden_dict['total'])
+            orden_dict['pago_con'] = float(orden_dict['pago_con'])
+            orden_dict['cambio'] = float(orden_dict['cambio'])
+            orden_dict['fecha_venta'] = orden_dict['fecha_venta'].strftime('%Y-%m-%d %H:%M:%S')
+            # items ya es JSONB, se convierte automáticamente
+            result.append(orden_dict)
+        
+        return result
+        
+    except Exception as e:
+        print(f"Error en get_ordenes_por_cliente: {e}")
         cursor.close()
         conn.close()
         raise e

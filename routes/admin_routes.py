@@ -202,3 +202,30 @@ def eliminar_descuento_route(descuento_id):
     except Exception as e:
         print(f"Error al eliminar descuento: {e}")
         return jsonify({'success': False, 'message': 'Error al eliminar descuento'}), 500
+    
+
+@admin_bp.route('/api/clientes/<int:cliente_id>/detalle', methods=['GET'])
+def obtener_detalle_cliente(cliente_id):
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        from database.db import get_cliente_by_id, get_ordenes_por_cliente
+        
+        cliente = get_cliente_by_id(cliente_id)
+        if not cliente:
+            return jsonify({'success': False, 'message': 'Cliente no encontrado'}), 404
+        
+        ordenes = get_ordenes_por_cliente(cliente_id)
+        
+        return jsonify({
+            'success': True,
+            'cliente': cliente,
+            'ordenes': ordenes
+        })
+    except Exception as e:
+        print(f"Error al obtener detalle del cliente: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': 'Error al obtener detalle'}), 500

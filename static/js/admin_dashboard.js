@@ -358,14 +358,30 @@ function mostrarClientes(clientes) {
     
     clientes.forEach(cliente => {
         const row = document.createElement('tr');
+        
+        // Formatear fecha de registro
+        let fechaRegistro = 'N/A';
+        if (cliente.created_at) {
+            const fecha = new Date(cliente.created_at);
+            fechaRegistro = fecha.toLocaleDateString('es-MX', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
         row.innerHTML = `
             <td>${cliente.id}</td>
             <td>${cliente.nombre}</td>
             <td>${cliente.correo}</td>
-            <td><span class="badge badge-info">${cliente.puntos_acumulados} pts</span></td>
-            <td>${cliente.created_at || '-'}</td>
+            <td>${cliente.puntos_acumulados}</td>
+            <td>${fechaRegistro}</td>
             <td>
-                <button class="btn btn-secondary" onclick="verDetalleCliente(${cliente.id})">Ver Detalle</button>
+                <button class="btn btn-primary btn-sm" onclick="verDetalleCliente(${cliente.id})">
+                    👁️ Ver Detalle
+                </button>
             </td>
         `;
         tbody.appendChild(row);
@@ -570,3 +586,145 @@ document.getElementById('buscar-cliente')?.addEventListener('input', function(e)
         }
     });
 });
+
+async function verDetalleCliente(clienteId) {
+    try {
+        const response = await fetch(`/admin/api/clientes/${clienteId}/detalle`);
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarModalDetalleCliente(data.cliente, data.ordenes);
+        } else {
+            alert('Error al cargar detalle del cliente');
+        }
+    } catch (error) {
+        console.error('Error al cargar detalle:', error);
+        alert('Error al cargar detalle del cliente');
+    }
+}
+
+
+function mostrarModalDetalleCliente(cliente, ordenes) {
+    const modal = document.getElementById('modal-detalle-cliente');
+    const clienteInfo = document.getElementById('cliente-info');
+    
+    // Formatear fecha de registro
+    let fechaRegistro = 'N/A';
+    if (cliente.created_at) {
+        const fecha = new Date(cliente.created_at);
+        fechaRegistro = fecha.toLocaleDateString('es-MX', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+    
+    // Formatear última visita
+    let ultimaVisita = 'Sin visitas';
+    if (cliente.ultima_visita) {
+        const fecha = new Date(cliente.ultima_visita);
+        ultimaVisita = fecha.toLocaleDateString('es-MX', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+    
+    clienteInfo.innerHTML = `
+        <div class="cliente-detalle">
+            <p><strong>ID:</strong> ${cliente.id}</p>
+            <p><strong>Nombre:</strong> ${cliente.nombre}</p>
+            <p><strong>Correo:</strong> ${cliente.correo}</p>
+            <p><strong>Puntos Acumulados:</strong> ${cliente.puntos_acumulados}</p>
+            <p><strong>Fecha de Registro:</strong> ${fechaRegistro}</p>
+            <p><strong>Última Visita:</strong> ${ultimaVisita}</p>
+            <p><strong>Total de Órdenes:</strong> ${ordenes.length}</p>
+        </div>
+    `;
+    
+    // Llenar tabla de órdenes
+    const tbody = document.querySelector('#tabla-ordenes-cliente tbody');
+    tbody.innerHTML = '';
+    
+    if (ordenes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No hay órdenes registradas</td></tr>';
+    } else {
+        ordenes.forEach(orden => {
+            const fecha = new Date(orden.fecha_venta);
+            const fechaFormateada = fecha.toLocaleDateString('es-MX', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${fechaFormateada}</td>
+                <td>${orden.orden_id}</td>
+                <td>$${parseFloat(orden.total).toFixed(2)}</td>
+                <td>${orden.cajero_nombre}</td>
+                <td>
+                    <button class="btn btn-primary btn-sm" onclick='verDetalleOrden("${orden.orden_id}", ${JSON.stringify(orden.items)})'>
+                        Ver Items
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+    
+    modal.style.display = 'block';
+}
+
+function verDetalleOrden(ordenId, items) {
+    let itemsHTML = '<div style="margin-top: 10px;"><h4>Items de la orden ' + ordenId + ':</h4><ul style="list-style: none; padding: 0;">';
+    
+    items.forEach(item => {
+        itemsHTML += `
+            <li style="padding: 8px; border-bottom: 1px solid #eee;">
+                <strong>${item.cantidad}x</strong> ${item.nombre} - 
+                $${parseFloat(item.precio).toLocaleString('es-MX', {minimumFractionDigits: 2})} c/u = 
+                <strong>$${(item.cantidad * parseFloat(item.precio)).toLocaleString('es-MX', {minimumFractionDigits: 2})}</strong>
+            </li>
+        `;
+    });
+    
+    itemsHTML += '</ul></div>';
+    
+    // Crear un mini modal o alert con la información
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 30px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        z-index: 10001;
+        max-width: 500px;
+        max-height: 80vh;
+        overflow-y: auto;
+    `;
+    modal.innerHTML = itemsHTML + '<button class="btn btn-secondary" style="margin-top: 20px;" onclick="this.parentElement.remove()">Cerrar</button>';
+    document.body.appendChild(modal);
+}
+
+function cerrarModalDetalleCliente() {
+    document.getElementById('modal-detalle-cliente').style.display = 'none';
+}
+
+// Cerrar modal al hacer clic fuera
+window.onclick = function(event) {
+    const modalCliente = document.getElementById('modal-detalle-cliente');
+    if (event.target == modalCliente) {
+        modalCliente.style.display = 'none';
+    }
+}
