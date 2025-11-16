@@ -69,6 +69,19 @@ CREATE TABLE IF NOT EXISTS cierre_caja (
     FOREIGN KEY (cajero_id) REFERENCES empleado(id)
 );
 
+-- Crear tabla de descuentos por cliente
+CREATE TABLE IF NOT EXISTS descuento_cliente (
+    id SERIAL PRIMARY KEY,
+    cliente_id INTEGER,
+    porcentaje_descuento DECIMAL(5, 2) NOT NULL CHECK (porcentaje_descuento >= 0 AND porcentaje_descuento <= 100),
+    activo BOOLEAN DEFAULT true,
+    fecha_inicio TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    fecha_fin TIMESTAMP,
+    notas TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES cliente(id) ON DELETE CASCADE
+);
+
 -- Índices para búsquedas rápidas
 CREATE INDEX IF NOT EXISTS idx_producto_categoria ON producto(categoria_id);
 CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha_venta);
@@ -78,6 +91,9 @@ CREATE INDEX IF NOT EXISTS idx_ventas_cliente ON ventas(cliente_id);
 CREATE INDEX IF NOT EXISTS idx_cierre_caja_fecha ON cierre_caja(fecha_cierre);
 CREATE INDEX IF NOT EXISTS idx_cierre_caja_cajero ON cierre_caja(cajero_id);
 CREATE INDEX IF NOT EXISTS idx_cliente_correo ON cliente(correo);
+CREATE INDEX IF NOT EXISTS idx_descuento_cliente ON descuento_cliente(cliente_id);
+CREATE INDEX IF NOT EXISTS idx_descuento_activo ON descuento_cliente(activo);
+
 
 -- Datos de ejemplo para empleados
 INSERT INTO empleado (nombre, rol, codigo) VALUES
@@ -133,3 +149,8 @@ INSERT INTO producto (categoria_id, nombre, costo, precio, precio_puntos, descri
 ((SELECT id FROM categoria WHERE nombre = 'Postres'), 'Flan Napolitano', 18.00, 45.00, 145, 'Flan casero con caramelo', 'https://assets.tmecosys.com/image/upload/t_web_rdp_recipe_584x480/img/recipe/ras/Assets/32121D5E-D3DF-4FD9-BE6E-7EB53562A1DE/Derivates/02DCA6F3-23D3-4F25-92B2-EAEF2A6606F3.jpg', 'disponible'),
 ((SELECT id FROM categoria WHERE nombre = 'Postres'), 'Brownie', 20.00, 50.00, 165, 'Con nuez y helado de vainilla', 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSKla3fUU5QCsD_mA39sf3JCn6Hf3VANGa1nQ&s', 'fuera de servicio')
 ON CONFLICT DO NOTHING;
+
+-- Constraint para evitar descuentos duplicados activos para el mismo cliente
+CREATE UNIQUE INDEX IF NOT EXISTS idx_descuento_cliente_activo 
+ON descuento_cliente(cliente_id) 
+WHERE activo = true;

@@ -59,6 +59,8 @@ function mostrarSeccion(seccionId) {
         cargarCategorias();
     } else if (seccionId === 'perfiles') {
         cargarPerfiles();
+    } else if (seccionId === 'descuentos') {
+        cargarDescuentos();
     }
 }
 
@@ -370,20 +372,162 @@ function mostrarClientes(clientes) {
     });
 }
 
-// ===== OTRAS FUNCIONES =====
-async function cargarProductos() {
-    // TODO: Implementar
-    console.log('Cargar productos');
+// ===== DESCUENTOS =====
+async function cargarDescuentos() {
+    try {
+        const response = await fetch('/admin/api/descuentos');
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarDescuentos(data.descuentos);
+        } else {
+            alert('Error al cargar descuentos: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al cargar descuentos:', error);
+        alert('Error al cargar descuentos');
+    }
 }
 
-async function cargarCategorias() {
-    // TODO: Implementar
-    console.log('Cargar categorías');
+function mostrarDescuentos(descuentos) {
+    const tbody = document.querySelector('#tabla-descuentos tbody');
+    tbody.innerHTML = '';
+    
+    if (descuentos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">No hay descuentos registrados</td></tr>';
+        return;
+    }
+    
+    descuentos.forEach(desc => {
+        const row = document.createElement('tr');
+        const estado = desc.activo ? 
+            '<span class="badge badge-success">Activo</span>' : 
+            '<span class="badge badge-secondary">Inactivo</span>';
+        
+        const fechaFin = desc.fecha_fin ? 
+            new Date(desc.fecha_fin).toLocaleDateString('es-MX') : 
+            'Sin límite';
+        
+        // Mostrar si es descuento general o específico
+        const tipoDescuento = desc.cliente_id ? 
+            '' : 
+            '<span class="badge badge-warning" style="margin-left: 5px;">General</span>';
+        
+        row.innerHTML = `
+            <td>${desc.cliente_nombre}${tipoDescuento}</td>
+            <td>${desc.cliente_correo}</td>
+            <td style="font-weight: bold; color: #28a745;">${desc.porcentaje_descuento}%</td>
+            <td>${new Date(desc.fecha_inicio).toLocaleDateString('es-MX')}</td>
+            <td>${fechaFin}</td>
+            <td>${estado}</td>
+            <td>
+                <button class="btn btn-danger btn-sm" onclick="eliminarDescuento(${desc.id})">
+                    🗑️ Eliminar
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+async function mostrarModalDescuento() {
+    // Primero cargar los clientes
+    try {
+        const response = await fetch('/admin/api/clientes');
+        const data = await response.json();
+        
+        if (data.success) {
+            const select = document.getElementById('descuento-cliente');
+            select.innerHTML = '<option value="">Seleccionar cliente</option>';
+            
+            data.clientes.forEach(cliente => {
+                const option = document.createElement('option');
+                option.value = cliente.id;
+                option.textContent = `${cliente.nombre} (${cliente.correo})`;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error al cargar clientes:', error);
+    }
+    
+    // Limpiar formulario
+    document.getElementById('form-descuento').reset();
+    document.getElementById('modal-descuento-titulo').textContent = 'Nuevo Descuento';
+    
+    // Mostrar modal
+    document.getElementById('modal-descuento').style.display = 'block';
 }
 
-async function cargarPerfiles() {
-    // TODO: Implementar
-    console.log('Cargar perfiles');
+function cerrarModalDescuento() {
+    document.getElementById('modal-descuento').style.display = 'none';
+}
+
+// Manejar envío del formulario de descuento
+document.getElementById('form-descuento')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const clienteId = document.getElementById('descuento-cliente').value;
+    const porcentaje = document.getElementById('descuento-porcentaje').value;
+    const fechaFin = document.getElementById('descuento-fecha-fin').value || null;
+    const notas = document.getElementById('descuento-notas').value || null;
+    
+    // Solo validar el porcentaje (cliente es opcional)
+    if (!porcentaje) {
+        alert('Por favor ingrese el porcentaje de descuento');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/admin/api/descuentos', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                cliente_id: clienteId ? parseInt(clienteId) : null,
+                porcentaje_descuento: parseFloat(porcentaje),
+                fecha_fin: fechaFin,
+                notas: notas
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Descuento creado exitosamente');
+            cerrarModalDescuento();
+            cargarDescuentos();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al crear descuento:', error);
+        alert('❌ Error al crear descuento');
+    }
+});
+
+async function eliminarDescuento(descuentoId) {
+    if (!confirm('¿Está seguro de eliminar este descuento?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/admin/api/descuentos/${descuentoId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Descuento eliminado exitosamente');
+            cargarDescuentos();
+        } else {
+            alert('❌ Error al eliminar descuento');
+        }
+    } catch (error) {
+        console.error('Error al eliminar descuento:', error);
+        alert('❌ Error al eliminar descuento');
+    }
 }
 
 async function cerrarSesion() {

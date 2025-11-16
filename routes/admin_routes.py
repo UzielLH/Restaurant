@@ -6,7 +6,10 @@ from database.db import (
     get_reportes_financieros_empleados,
     get_all_clientes,
     get_all_productos,
-    get_categorias
+    get_categorias,
+    crear_descuento_cliente,
+    get_all_descuentos,
+    eliminar_descuento_permanente
 )
 from utils.pdf_reports import generar_reporte_empleados_pdf
 import io
@@ -143,3 +146,59 @@ def listar_empleados():
     except Exception as e:
         print(f"Error al obtener empleados: {e}")
         return jsonify({'success': False, 'message': 'Error al obtener empleados'}), 500
+    
+# ===== DESCUENTOS =====
+@admin_bp.route('/api/descuentos', methods=['GET'])
+def listar_descuentos():
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        descuentos = get_all_descuentos()
+        return jsonify({'success': True, 'descuentos': descuentos})
+    except Exception as e:
+        print(f"Error al obtener descuentos: {e}")
+        return jsonify({'success': False, 'message': 'Error al obtener descuentos'}), 500
+
+@admin_bp.route('/api/descuentos', methods=['POST'])
+def crear_descuento():
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    data = request.get_json()
+    cliente_id = data.get('cliente_id') or None  # Convertir cadena vacía a None
+    porcentaje_descuento = data.get('porcentaje_descuento')
+    fecha_fin = data.get('fecha_fin') or None
+    notas = data.get('notas') or None
+    
+    # Validar solo el porcentaje (cliente_id es opcional)
+    if not porcentaje_descuento:
+        return jsonify({'success': False, 'message': 'El porcentaje de descuento es requerido'}), 400
+    
+    try:
+        porcentaje = float(porcentaje_descuento)
+        if porcentaje < 0 or porcentaje > 100:
+            return jsonify({'success': False, 'message': 'El porcentaje debe estar entre 0 y 100'}), 400
+        
+        descuento_id = crear_descuento_cliente(cliente_id, porcentaje, fecha_fin, notas)
+        return jsonify({'success': True, 'message': 'Descuento creado exitosamente', 'descuento_id': descuento_id})
+    except Exception as e:
+        print(f"Error al crear descuento: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error al crear descuento: {str(e)}'}), 500
+
+@admin_bp.route('/api/descuentos/<int:descuento_id>', methods=['DELETE'])
+def eliminar_descuento_route(descuento_id):
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        eliminar_descuento_permanente(descuento_id)
+        return jsonify({'success': True, 'message': 'Descuento eliminado exitosamente'})
+    except Exception as e:
+        print(f"Error al eliminar descuento: {e}")
+        return jsonify({'success': False, 'message': 'Error al eliminar descuento'}), 500

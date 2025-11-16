@@ -691,3 +691,142 @@ def get_ventas_por_empleado(empleado_id, fecha_inicio, fecha_fin):
         result.append(venta)
     
     return result
+
+# ===== FUNCIONES PARA DESCUENTOS =====
+def crear_descuento_cliente(cliente_id, porcentaje_descuento, fecha_fin=None, notas=None):
+    """Crea un descuento para un cliente (cliente_id puede ser NULL para descuentos generales)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Si hay cliente_id, desactivar descuentos anteriores de ese cliente
+        if cliente_id:
+            cursor.execute(
+                "UPDATE descuento_cliente SET activo = false WHERE cliente_id = %s AND activo = true",
+                (cliente_id,)
+            )
+        
+        # Crear nuevo descuento
+        cursor.execute(
+            """
+            INSERT INTO descuento_cliente (cliente_id, porcentaje_descuento, fecha_fin, notas)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id
+            """,
+            (cliente_id, porcentaje_descuento, fecha_fin, notas)
+        )
+        descuento_id = cursor.fetchone()[0]
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return descuento_id
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e
+
+def get_all_descuentos():
+    """Obtiene todos los descuentos con información del cliente (si existe)"""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cursor.execute("""
+        SELECT 
+            d.id,
+            d.cliente_id,
+            COALESCE(c.nombre, 'Sin cliente asignado') as cliente_nombre,
+            COALESCE(c.correo, '-') as cliente_correo,
+            d.porcentaje_descuento,
+            d.activo,
+            d.fecha_inicio,
+            d.fecha_fin,
+            d.notas,
+            d.created_at
+        FROM descuento_cliente d
+        LEFT JOIN cliente c ON d.cliente_id = c.id
+        ORDER BY d.created_at DESC
+    """)
+    
+    descuentos = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    
+    result = []
+    for desc in descuentos:
+        descuento = dict(desc)
+        descuento['porcentaje_descuento'] = float(descuento['porcentaje_descuento'])
+        descuento['fecha_inicio'] = descuento['fecha_inicio'].strftime('%Y-%m-%d %H:%M:%S') if descuento['fecha_inicio'] else None
+        descuento['fecha_fin'] = descuento['fecha_fin'].strftime('%Y-%m-%d %H:%M:%S') if descuento['fecha_fin'] else None
+        descuento['created_at'] = descuento['created_at'].strftime('%Y-%m-%d %H:%M:%S') if descuento['created_at'] else None
+        result.append(descuento)
+    
+    return result
+
+def get_descuento_activo_cliente(cliente_id):
+    """Obtiene el descuento activo de un cliente"""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cursor.execute("""
+        SELECT 
+            id,
+            cliente_id,
+            porcentaje_descuento,
+            fecha_fin
+        FROM descuento_cliente
+        WHERE cliente_id = %s 
+        AND activo = true
+        AND (fecha_fin IS NULL OR fecha_fin >= CURRENT_TIMESTAMP)
+        LIMIT 1
+    """, (cliente_id,))
+    
+    descuento = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    
+    if descuento:
+        result = dict(descuento)
+        result['porcentaje_descuento'] = float(result['porcentaje_descuento'])
+        return result
+    return None
+
+def eliminar_descuento(descuento_id):
+    """Elimina un descuento (lo marca como inactivo)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            "UPDATE descuento_cliente SET activo = false WHERE id = %s",
+            (descuento_id,)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e
+
+def eliminar_descuento_permanente(descuento_id):
+    """Elimina un descuento permanentemente de la base de datos"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            "DELETE FROM descuento_cliente WHERE id = %s",
+            (descuento_id,)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e
