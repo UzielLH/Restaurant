@@ -29,27 +29,34 @@ def validate_empleado(codigo):
     return dict(empleado) if empleado else None
 
 def get_all_productos():
-    conn = get_db_connection()
+    """Obtiene todos los productos con su categoría"""
+    conn = get_db_connection()  # Cambiar get_connection() por get_db_connection()
     cursor = conn.cursor(cursor_factory=RealDictCursor)
     
-    cursor.execute(
-        "SELECT id, categoria, nombre, costo, precio, precio_puntos, descripcion, img, status FROM producto ORDER BY categoria, nombre"
-    )
-    productos = cursor.fetchall()
+    cursor.execute("""
+        SELECT 
+            p.id, 
+            p.categoria_id,
+            c.nombre as categoria,
+            p.nombre,
+            p.costo,
+            p.precio,
+            p.precio_puntos,
+            p.descripcion,
+            p.img,
+            p.status,
+            p.created_at
+        FROM producto p
+        INNER JOIN categoria c ON p.categoria_id = c.id
+        WHERE c.activo = true
+        ORDER BY c.orden, p.nombre
+    """)
     
+    productos = cursor.fetchall()
     cursor.close()
     conn.close()
     
-    # Convertir Decimal a float
-    result = []
-    for p in productos:
-        producto = dict(p)
-        producto['costo'] = float(producto['costo'])
-        producto['precio'] = float(producto['precio'])
-        producto['precio_puntos'] = int(producto.get('precio_puntos', 0))
-        result.append(producto)
-    
-    return result if result else []
+    return [dict(prod) for prod in productos]
 
 def get_productos_by_categoria(categoria):
     conn = get_db_connection()
@@ -75,18 +82,24 @@ def get_productos_by_categoria(categoria):
     return result if result else []
 
 def get_categorias():
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    """Obtiene todas las categorías activas"""
+    conn = get_db_connection()  # Cambiar get_connection() por get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
     
-    cursor.execute(
-        "SELECT DISTINCT categoria FROM producto ORDER BY categoria"
-    )
+    cursor.execute("""
+        SELECT id, nombre, descripcion, orden
+        FROM categoria
+        WHERE activo = true
+        ORDER BY orden, nombre
+    """)
+    
     categorias = cursor.fetchall()
-    
     cursor.close()
     conn.close()
     
-    return [c[0] for c in categorias] if categorias else []
+    return [dict(cat) for cat in categorias]
+
+
 
 def guardar_venta(orden_id, cajero_id, cajero_nombre, total, pago_con, cambio, items, cliente_id=None, notas=None):
     """Guarda una venta en PostgreSQL"""

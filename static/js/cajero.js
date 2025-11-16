@@ -417,12 +417,54 @@ function calcularCambio() {
         btnConfirmar.disabled = true;
     } else {
         const cambio = pagoCon - total;
-        cambioValue.textContent = `$${cambio.toFixed(2)}`;
-        cambioContainer.style.display = 'block';
-        btnConfirmar.disabled = false;
+        
+        // NUEVA VALIDACIÓN: Verificar si hay suficiente cambio en caja
+        if (cambio > 0) {
+            verificarCambioDisponible(cambio, total).then(suficiente => {
+                if (!suficiente) {
+                    btnConfirmar.disabled = true;
+                } else {
+                    cambioValue.textContent = `$${cambio.toFixed(2)}`;
+                    cambioContainer.style.display = 'block';
+                    btnConfirmar.disabled = false;
+                }
+            });
+        } else {
+            // Pago exacto
+            cambioValue.textContent = `$${cambio.toFixed(2)}`;
+            cambioContainer.style.display = 'block';
+            btnConfirmar.disabled = false;
+        }
     }
 }
 
+async function verificarCambioDisponible(cambioNecesario, totalVenta) {
+    try {
+        const response = await fetch('/api/caja-actual');
+        const data = await response.json();
+        
+        if (data.success) {
+            const cajaActual = data.caja_actual;
+            // La caja después de recibir el pago pero antes de dar cambio
+            const cajaDespuesDePago = cajaActual + totalVenta;
+            const cajaFinal = cajaDespuesDePago - cambioNecesario;
+            
+            const errorDiv = document.getElementById('pago-error');
+            
+            if (cajaFinal < 0) {
+                errorDiv.textContent = `⚠️ No hay suficiente cambio en caja.\nCambio necesario: $${cambioNecesario.toFixed(2)}\nEfectivo disponible: $${cajaActual.toFixed(2)}\nSolicite al cliente un monto más cercano al total.`;
+                errorDiv.style.display = 'block';
+                return false;
+            }
+            
+            return true;
+        }
+        return true; // Si hay error, permitir continuar
+    } catch (error) {
+        console.error('Error al verificar cambio:', error);
+        return true; // Si hay error, permitir continuar
+    }
+}
 
 async function confirmarPago() {
     if (!ordenActualPago) return;

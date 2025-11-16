@@ -258,6 +258,18 @@ def procesar_pago():
     # Calcular cambio
     cambio = pago_con - total
     
+    # NUEVA VALIDACIÓN: Verificar que hay suficiente efectivo para dar cambio
+    if cambio > 0:
+        caja_actual = get_caja_actual(session_id)
+        if caja_actual is not None:
+            # La caja tendrá el monto actual + el total de la venta - el cambio
+            caja_despues_cambio = caja_actual + total - cambio
+            if caja_despues_cambio < 0:
+                return jsonify({
+                    'success': False,
+                    'message': f'No hay suficiente efectivo en caja para dar cambio.\nCambio requerido: ${cambio:.2f}\nEfectivo disponible: ${caja_actual:.2f}\nPor favor solicite un monto más cercano al total.'
+                }), 400
+    
     # Usar cliente_id de la orden si existe y no viene del frontend
     if not cliente_id and orden.get('cliente_id'):
         cliente_id = orden.get('cliente_id')
@@ -308,7 +320,6 @@ def procesar_pago():
             'success': False,
             'message': 'Error al procesar el pago'
         }), 500
-
 
 @app.route('/api/generar-recibo/<int:venta_id>', methods=['GET'])
 def generar_recibo(venta_id):

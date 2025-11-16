@@ -32,8 +32,8 @@
                     Todos
                 </button>
                 {% for categoria in categorias %}
-                <button class="category-btn" onclick="filterCategory('{{ categoria }}')" data-category="{{ categoria }}">
-                    {{ categoria }}
+                <button class="category-btn" onclick="filterCategory('{{ categoria.nombre }}')" data-category="{{ categoria.nombre }}">
+                    {{ categoria.nombre }}
                 </button>
                 {% endfor %}
             </div>
@@ -81,7 +81,6 @@
                 <div class="cart-items" id="cart-items">
                     <p class="empty-cart">No hay productos</p>
                 </div>
-                <!-- Agregar después de </div> de cart-items y antes de cart-total -->
                 <div class="orden-extras">
                     <div class="orden-extra-item">
                         <label for="orden-notas">Notas (Opcional):</label>
@@ -175,7 +174,6 @@
                     
                     <div class="pago-error" id="pago-error" style="display: none;"></div>
                 </div>
-                <!-- Agregar después de </div> de pago-info -->
                 <div id="puntos-info" class="puntos-info" style="display: none;"></div>
                 
                 <div class="pago-actions">
@@ -260,55 +258,56 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', filename='js/cajero.js') }}"></script>
     <!-- Modal de Clientes -->
-<div id="clientes-modal" class="modal" style="display: none;">
-    <div class="modal-overlay" onclick="cerrarModalClientes()"></div>
-    <div class="modal-clientes">
-        <div class="modal-header">
-            <h2>Seleccionar Cliente</h2>
-            <button class="btn-close" onclick="cerrarModalClientes()">×</button>
-        </div>
-        <div class="modal-body">
-            <div class="clientes-busqueda">
-                <input 
-                    type="text" 
-                    id="buscar-cliente-input" 
-                    placeholder="Buscar por correo..."
-                    onkeyup="filtrarClientes()"
-                >
-                <button class="btn-nuevo-cliente" onclick="mostrarFormularioCliente()">
-                    + Nuevo Cliente
-                </button>
+    <div id="clientes-modal" class="modal" style="display: none;">
+        <div class="modal-overlay" onclick="cerrarModalClientes()"></div>
+        <div class="modal-clientes">
+            <div class="modal-header">
+                <h2>Seleccionar Cliente</h2>
+                <button class="btn-close" onclick="cerrarModalClientes()">×</button>
             </div>
-            
-            <div id="formulario-nuevo-cliente" style="display: none;">
-                <div class="form-nuevo-cliente">
-                    <h3>Registrar Nuevo Cliente</h3>
-                    <div class="form-group">
-                        <label>Nombre:</label>
-                        <input type="text" id="nuevo-cliente-nombre" placeholder="Nombre completo">
-                    </div>
-                    <div class="form-group">
-                        <label>Correo:</label>
-                        <input type="email" id="nuevo-cliente-correo" placeholder="correo@ejemplo.com">
-                    </div>
-                    <div class="form-actions">
-                        <button class="btn-guardar-cliente" onclick="guardarNuevoCliente()">
-                            Guardar
-                        </button>
-                        <button class="btn-cancelar-form" onclick="ocultarFormularioCliente()">
-                            Cancelar
-                        </button>
+            <div class="modal-body">
+                <div class="clientes-busqueda">
+                    <input 
+                        type="text" 
+                        id="buscar-cliente-input" 
+                        placeholder="Buscar por correo..."
+                        onkeyup="filtrarClientes()"
+                    >
+                    <button class="btn-nuevo-cliente" onclick="mostrarFormularioCliente()">
+                        + Nuevo Cliente
+                    </button>
+                </div>
+                
+                <div id="formulario-nuevo-cliente" style="display: none;">
+                    <div class="form-nuevo-cliente">
+                        <h3>Registrar Nuevo Cliente</h3>
+                        <div class="form-group">
+                            <label>Nombre:</label>
+                            <input type="text" id="nuevo-cliente-nombre" placeholder="Nombre completo">
+                        </div>
+                        <div class="form-group">
+                            <label>Correo:</label>
+                            <input type="email" id="nuevo-cliente-correo" placeholder="correo@ejemplo.com">
+                        </div>
+                        <div class="form-actions">
+                            <button class="btn-guardar-cliente" onclick="guardarNuevoCliente()">
+                                Guardar
+                            </button>
+                            <button class="btn-cancelar-form" onclick="ocultarFormularioCliente()">
+                                Cancelar
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="clientes-lista" id="clientes-lista">
-                <p class="loading-clientes">Cargando clientes...</p>
+                
+                <div class="clientes-lista" id="clientes-lista">
+                    <p class="loading-clientes">Cargando clientes...</p>
+                </div>
             </div>
         </div>
     </div>
-</div>
+
+    <script src="{{ url_for('static', filename='js/cajero.js') }}"></script>
 </body>
 </html>
