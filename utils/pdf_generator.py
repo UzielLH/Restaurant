@@ -6,6 +6,8 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 from datetime import datetime
 import io
+import requests
+from io import BytesIO
 
 def generar_recibo_pdf(venta_data):
     """
@@ -21,7 +23,25 @@ def generar_recibo_pdf(venta_data):
             - cambio: Cambio devuelto
             - fecha_venta: Fecha de la venta
     """
+    from database.db import get_configuracion_ticket
+    
     buffer = io.BytesIO()
+    
+    # Obtener configuración del ticket
+    config = get_configuracion_ticket()
+    if not config:
+        # Valores por defecto si no hay configuración
+        config = {
+            'nombre_negocio': 'RESTAURANT LA SALLE',
+            'direccion': '',
+            'telefono': '',
+            'rfc': '',
+            'encabezado': '',
+            'mensaje_agradecimiento': '¡Gracias por su compra!',
+            'pie_pagina': '',
+            'mostrar_puntos': True,
+            'logo_url': None
+        }
     
     # Crear documento PDF
     doc = SimpleDocTemplate(buffer, pagesize=letter, 
@@ -40,7 +60,7 @@ def generar_recibo_pdf(venta_data):
         parent=styles['Heading1'],
         fontSize=24,
         textColor=colors.HexColor('#667eea'),
-        spaceAfter=30,
+        spaceAfter=10,
         alignment=TA_CENTER
     )
     
@@ -62,9 +82,55 @@ def generar_recibo_pdf(venta_data):
         spaceAfter=5
     )
     
-    # Encabezado
-    titulo = Paragraph("RESTAURANT LA SALLE", titulo_style)
+    # Agregar logo si existe
+    if config.get('logo_url'):
+        try:
+            response = requests.get(config['logo_url'], timeout=5)
+            if response.status_code == 200:
+                img_buffer = BytesIO(response.content)
+                logo = Image(img_buffer, width=2*inch, height=1*inch)
+                logo.hAlign = 'CENTER'
+                elementos.append(logo)
+                elementos.append(Spacer(1, 0.2*inch))
+        except Exception as e:
+            print(f"Error al cargar logo desde URL: {e}")
+    
+    # Encabezado - Nombre del negocio
+    titulo = Paragraph(config.get('nombre_negocio', 'RESTAURANT LA SALLE'), titulo_style)
     elementos.append(titulo)
+    
+    # Encabezado legal/fiscal si existe
+    if config.get('encabezado'):
+        encabezado_style = ParagraphStyle(
+            'Encabezado',
+            parent=styles['Normal'],
+            fontSize=8,
+            textColor=colors.grey,
+            alignment=TA_CENTER,
+            spaceAfter=5
+        )
+        for linea in config['encabezado'].split('\n'):
+            if linea.strip():
+                elementos.append(Paragraph(linea, encabezado_style))
+        elementos.append(Spacer(1, 0.1*inch))
+    
+    # Información del negocio (dirección, teléfono, RFC)
+    if config.get('direccion') or config.get('telefono') or config.get('rfc'):
+        info_negocio_style = ParagraphStyle(
+            'InfoNegocio',
+            parent=styles['Normal'],
+            fontSize=9,
+            textColor=colors.grey,
+            alignment=TA_CENTER,
+            spaceAfter=3
+        )
+        if config.get('direccion'):
+            elementos.append(Paragraph(config['direccion'], info_negocio_style))
+        if config.get('telefono'):
+            elementos.append(Paragraph(f"Tel: {config['telefono']}", info_negocio_style))
+        if config.get('rfc'):
+            elementos.append(Paragraph(f"RFC: {config['rfc']}", info_negocio_style))
+        elementos.append(Spacer(1, 0.1*inch))
     
     subtitulo = Paragraph("Recibo de Compra", subtitulo_style)
     elementos.append(subtitulo)
@@ -178,7 +244,22 @@ def generar_recibo_pdf(venta_data):
     ]))
     
     elementos.append(totales_table)
-    elementos.append(Spacer(1, 0.5*inch))
+    elementos.append(Spacer(1, 0.3*inch))
+    
+    # Pie de página con información de facturación
+    if config.get('pie_pagina'):
+        pie_style = ParagraphStyle(
+            'PiePagina',
+            parent=styles['Normal'],
+            fontSize=8,
+            textColor=colors.grey,
+            alignment=TA_CENTER,
+            spaceAfter=3
+        )
+        for linea in config['pie_pagina'].split('\n'):
+            if linea.strip():
+                elementos.append(Paragraph(linea, pie_style))
+        elementos.append(Spacer(1, 0.2*inch))
     
     # Mensaje de agradecimiento
     gracias_style = ParagraphStyle(
@@ -190,7 +271,7 @@ def generar_recibo_pdf(venta_data):
         spaceAfter=10
     )
     
-    mensaje_gracias = Paragraph("¡Gracias por su compra!", gracias_style)
+    mensaje_gracias = Paragraph(config.get('mensaje_agradecimiento', '¡Gracias por su compra!'), gracias_style)
     elementos.append(mensaje_gracias)
     
     mensaje_final = Paragraph("Esperamos verle pronto", subtitulo_style)

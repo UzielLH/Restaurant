@@ -82,6 +82,24 @@ CREATE TABLE IF NOT EXISTS descuento_cliente (
     FOREIGN KEY (cliente_id) REFERENCES cliente(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS configuracion_ticket (
+    id SERIAL PRIMARY KEY,
+    nombre_negocio VARCHAR(200),
+    direccion TEXT,
+    telefono VARCHAR(50),
+    rfc VARCHAR(50),
+    mensaje_agradecimiento TEXT,
+    mostrar_puntos BOOLEAN DEFAULT true,
+    encabezado TEXT,  -- Información legal/financiera
+    pie_pagina TEXT,  -- Información sobre facturación
+    logo_url TEXT,    -- URL de la imagen del logo
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_by INTEGER,
+    FOREIGN KEY (updated_by) REFERENCES empleado(id)
+);
+
+
+
 -- Índices para búsquedas rápidas
 CREATE INDEX IF NOT EXISTS idx_producto_categoria ON producto(categoria_id);
 CREATE INDEX IF NOT EXISTS idx_ventas_fecha ON ventas(fecha_venta);
@@ -154,3 +172,29 @@ ON CONFLICT DO NOTHING;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_descuento_cliente_activo 
 ON descuento_cliente(cliente_id) 
 WHERE activo = true;
+
+-- Insertar configuración por defecto
+INSERT INTO configuracion_ticket (
+    nombre_negocio, 
+    direccion, 
+    telefono, 
+    rfc, 
+    mensaje_agradecimiento,
+    mostrar_puntos,
+    encabezado,
+    pie_pagina,
+    logo_url
+) VALUES (
+    'Restaurant La Salle',
+    'Calle Principal #123, Col. Centro',
+    '(123) 456-7890',
+    'RFC123456789',
+    '¡Gracias por su compra! Vuelva pronto',
+    true,
+    'Régimen Fiscal: 601 - General de Ley Personas Morales
+Uso CFDI: G03 - Gastos en general',
+    'Para facturación electrónica envíe su ticket y datos fiscales a:
+facturacion@restaurant-lasalle.com
+Facturación disponible hasta 7 días después de su compra',
+    'https://static.vecteezy.com/system/resources/previews/052/792/818/non_2x/restaurant-logo-design-vector.jpg'
+) ON CONFLICT DO NOTHING;

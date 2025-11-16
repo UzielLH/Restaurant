@@ -229,3 +229,36 @@ def obtener_detalle_cliente(cliente_id):
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'message': 'Error al obtener detalle'}), 500
+
+# ===== CONFIGURACIÓN DEL TICKET =====
+@admin_bp.route('/api/configuracion-ticket', methods=['GET'])
+def obtener_configuracion_ticket():
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        from database.db import get_configuracion_ticket
+        config = get_configuracion_ticket()
+        return jsonify({'success': True, 'configuracion': config})
+    except Exception as e:
+        print(f"Error al obtener configuración: {e}")
+        return jsonify({'success': False, 'message': 'Error al obtener configuración'}), 500
+
+@admin_bp.route('/api/configuracion-ticket', methods=['POST'])
+def actualizar_configuracion_ticket_route():
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        from database.db import actualizar_configuracion_ticket
+        data = request.get_json()
+        
+        config_id = actualizar_configuracion_ticket(empleado['id'], data)
+        return jsonify({'success': True, 'message': 'Configuración actualizada exitosamente', 'config_id': config_id})
+    except Exception as e:
+        print(f"Error al actualizar configuración: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error al actualizar configuración: {str(e)}'}), 500

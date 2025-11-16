@@ -204,32 +204,62 @@
                 <div class="config-card">
                     <form id="form-ticket-config">
                         <div class="form-group">
+                            <label>URL del Logo del Negocio</label>
+                            <input type="url" id="ticket-logo-url" class="form-control" 
+                                placeholder="https://ejemplo.com/logo.png">
+                            <small style="color: #666;">Ingrese la URL completa de la imagen del logo</small>
+                            <div id="preview-logo" style="margin-top: 10px;"></div>
+                        </div>
+
+                        <div class="form-group">
                             <label>Nombre del Negocio</label>
                             <input type="text" id="ticket-nombre-negocio" class="form-control" placeholder="Restaurant XYZ">
                         </div>
+
                         <div class="form-group">
                             <label>Dirección</label>
                             <input type="text" id="ticket-direccion" class="form-control" placeholder="Calle Principal #123">
                         </div>
-                        <div class="form-group">
-                            <label>Teléfono</label>
-                            <input type="text" id="ticket-telefono" class="form-control" placeholder="(123) 456-7890">
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Teléfono</label>
+                                <input type="text" id="ticket-telefono" class="form-control" placeholder="(123) 456-7890">
+                            </div>
+                            <div class="form-group">
+                                <label>RFC</label>
+                                <input type="text" id="ticket-rfc" class="form-control" placeholder="RFC123456789">
+                            </div>
                         </div>
+
                         <div class="form-group">
-                            <label>RFC</label>
-                            <input type="text" id="ticket-rfc" class="form-control" placeholder="RFC123456789">
+                            <label>Encabezado Legal (Régimen Fiscal, Uso CFDI)</label>
+                            <textarea id="ticket-encabezado" class="form-control" rows="3" 
+                                    placeholder="Régimen Fiscal: 601 - General de Ley Personas Morales&#10;Uso CFDI: G03 - Gastos en general"></textarea>
+                            <small style="color: #666;">Información fiscal que aparecerá en la parte superior del ticket</small>
                         </div>
+
+                        <div class="form-group">
+                            <label>Pie de Página (Información de Facturación)</label>
+                            <textarea id="ticket-pie-pagina" class="form-control" rows="4" 
+                                    placeholder="Para facturación electrónica envíe su ticket y datos fiscales a:&#10;facturacion@restaurant.com&#10;Facturación disponible hasta 7 días después de su compra"></textarea>
+                            <small style="color: #666;">Instrucciones para facturación electrónica</small>
+                        </div>
+
                         <div class="form-group">
                             <label>Mensaje de Agradecimiento</label>
-                            <textarea id="ticket-mensaje" class="form-control" rows="3" placeholder="¡Gracias por su compra! Vuelva pronto"></textarea>
+                            <textarea id="ticket-mensaje" class="form-control" rows="2" 
+                                    placeholder="¡Gracias por su compra! Vuelva pronto"></textarea>
                         </div>
+
                         <div class="form-group">
                             <label>
-                                <input type="checkbox" id="ticket-mostrar-puntos">
+                                <input type="checkbox" id="ticket-mostrar-puntos" checked>
                                 Mostrar información de puntos en el ticket
                             </label>
                         </div>
-                        <button type="submit" class="btn btn-primary">Guardar Configuración</button>
+
+                        <button type="submit" class="btn btn-primary">💾 Guardar Configuración</button>
                     </form>
                 </div>
             </section>

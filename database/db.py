@@ -877,3 +877,110 @@ def get_ordenes_por_cliente(cliente_id):
         cursor.close()
         conn.close()
         raise e
+    
+# ===== FUNCIONES PARA CONFIGURACIÓN DEL TICKET =====
+def get_configuracion_ticket():
+    """Obtiene la configuración actual del ticket"""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cursor.execute("""
+        SELECT 
+            id,
+            nombre_negocio,
+            direccion,
+            telefono,
+            rfc,
+            mensaje_agradecimiento,
+            mostrar_puntos,
+            encabezado,
+            pie_pagina,
+            logo_url,
+            updated_at
+        FROM configuracion_ticket
+        ORDER BY id DESC
+        LIMIT 1
+    """)
+    
+    config = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    
+    if config:
+        result = dict(config)
+        result['updated_at'] = result['updated_at'].strftime('%Y-%m-%d %H:%M:%S') if result['updated_at'] else None
+        return result
+    return None
+
+def actualizar_configuracion_ticket(empleado_id, config_data):
+    """Actualiza la configuración del ticket"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # Primero verificar si existe configuración
+        cursor.execute("SELECT id FROM configuracion_ticket LIMIT 1")
+        existe = cursor.fetchone()
+        
+        if existe:
+            # Actualizar configuración existente
+            cursor.execute("""
+                UPDATE configuracion_ticket 
+                SET nombre_negocio = %s,
+                    direccion = %s,
+                    telefono = %s,
+                    rfc = %s,
+                    mensaje_agradecimiento = %s,
+                    mostrar_puntos = %s,
+                    encabezado = %s,
+                    pie_pagina = %s,
+                    logo_url = %s,
+                    updated_at = CURRENT_TIMESTAMP,
+                    updated_by = %s
+                WHERE id = %s
+                RETURNING id
+            """, (
+                config_data.get('nombre_negocio'),
+                config_data.get('direccion'),
+                config_data.get('telefono'),
+                config_data.get('rfc'),
+                config_data.get('mensaje_agradecimiento'),
+                config_data.get('mostrar_puntos', True),
+                config_data.get('encabezado'),
+                config_data.get('pie_pagina'),
+                config_data.get('logo_url'),
+                empleado_id,
+                existe[0]
+            ))
+        else:
+            # Insertar nueva configuración
+            cursor.execute("""
+                INSERT INTO configuracion_ticket (
+                    nombre_negocio, direccion, telefono, rfc, 
+                    mensaje_agradecimiento, mostrar_puntos,
+                    encabezado, pie_pagina, logo_url, updated_by
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (
+                config_data.get('nombre_negocio'),
+                config_data.get('direccion'),
+                config_data.get('telefono'),
+                config_data.get('rfc'),
+                config_data.get('mensaje_agradecimiento'),
+                config_data.get('mostrar_puntos', True),
+                config_data.get('encabezado'),
+                config_data.get('pie_pagina'),
+                config_data.get('logo_url'),
+                empleado_id
+            ))
+        
+        config_id = cursor.fetchone()[0]
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return config_id
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e

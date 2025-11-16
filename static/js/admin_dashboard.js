@@ -24,6 +24,16 @@ document.addEventListener('DOMContentLoaded', function() {
     
     document.getElementById('fecha-inicio-reporte').valueAsDate = fechaInicio;
     document.getElementById('fecha-fin-reporte').valueAsDate = fechaFin;
+    
+    // Preview del logo al cambiar la URL
+    document.getElementById('ticket-logo-url')?.addEventListener('input', function(e) {
+        const url = e.target.value.trim();
+        if (url) {
+            mostrarPreviewLogo(url);
+        } else {
+            document.getElementById('preview-logo').innerHTML = '';
+        }
+    });
 });
 
 function mostrarSeccion(seccionId) {
@@ -61,6 +71,8 @@ function mostrarSeccion(seccionId) {
         cargarPerfiles();
     } else if (seccionId === 'descuentos') {
         cargarDescuentos();
+    } else if (seccionId === 'ticket') {
+        cargarConfiguracionTicket(); // AGREGAR ESTA LÍNEA
     }
 }
 
@@ -720,6 +732,84 @@ function verDetalleOrden(ordenId, items) {
 function cerrarModalDetalleCliente() {
     document.getElementById('modal-detalle-cliente').style.display = 'none';
 }
+
+
+function mostrarPreviewLogo(url) {
+    const preview = document.getElementById('preview-logo');
+    preview.innerHTML = `
+        <div style="border: 2px dashed #667eea; padding: 10px; border-radius: 8px; text-align: center;">
+            <p style="margin-bottom: 10px; color: #666; font-size: 12px;">Vista previa:</p>
+            <img src="${url}" 
+                 style="max-width: 200px; max-height: 100px; object-fit: contain;"
+                 onerror="this.parentElement.innerHTML='<p style=color:red;>Error al cargar la imagen. Verifique la URL.</p>'">
+        </div>
+    `;
+}
+
+async function cargarConfiguracionTicket() {
+    try {
+        const response = await fetch('/admin/api/configuracion-ticket');
+        const data = await response.json();
+        
+        if (data.success && data.configuracion) {
+            const config = data.configuracion;
+            
+            document.getElementById('ticket-nombre-negocio').value = config.nombre_negocio || '';
+            document.getElementById('ticket-direccion').value = config.direccion || '';
+            document.getElementById('ticket-telefono').value = config.telefono || '';
+            document.getElementById('ticket-rfc').value = config.rfc || '';
+            document.getElementById('ticket-encabezado').value = config.encabezado || '';
+            document.getElementById('ticket-pie-pagina').value = config.pie_pagina || '';
+            document.getElementById('ticket-mensaje').value = config.mensaje_agradecimiento || '';
+            document.getElementById('ticket-mostrar-puntos').checked = config.mostrar_puntos !== false;
+            document.getElementById('ticket-logo-url').value = config.logo_url || '';
+            
+            if (config.logo_url) {
+                mostrarPreviewLogo(config.logo_url);
+            }
+        }
+    } catch (error) {
+        console.error('Error al cargar configuración:', error);
+    }
+}
+
+// Manejar envío del formulario de configuración
+document.getElementById('form-ticket-config')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const configData = {
+        nombre_negocio: document.getElementById('ticket-nombre-negocio').value,
+        direccion: document.getElementById('ticket-direccion').value,
+        telefono: document.getElementById('ticket-telefono').value,
+        rfc: document.getElementById('ticket-rfc').value,
+        encabezado: document.getElementById('ticket-encabezado').value,
+        pie_pagina: document.getElementById('ticket-pie-pagina').value,
+        mensaje_agradecimiento: document.getElementById('ticket-mensaje').value,
+        mostrar_puntos: document.getElementById('ticket-mostrar-puntos').checked,
+        logo_url: document.getElementById('ticket-logo-url').value
+    };
+    
+    try {
+        const response = await fetch('/admin/api/configuracion-ticket', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(configData)
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Configuración guardada exitosamente');
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al guardar configuración:', error);
+        alert('❌ Error al guardar configuración');
+    }
+});
 
 // Cerrar modal al hacer clic fuera
 window.onclick = function(event) {
