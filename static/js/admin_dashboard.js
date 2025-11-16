@@ -984,3 +984,406 @@ async function activarCategoria(categoriaId) {
         alert('❌ Error al activar categoría');
     }
 }
+
+
+// ===== PRODUCTOS =====
+async function cargarProductos() {
+    try {
+        const response = await fetch('/admin/api/productos-admin');
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarProductos(data.productos);
+        } else {
+            alert('Error al cargar productos: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al cargar productos:', error);
+        alert('Error al cargar productos');
+    }
+}
+
+function mostrarProductos(productos) {
+    const grid = document.getElementById('productos-grid');
+    grid.innerHTML = '';
+    
+    if (productos.length === 0) {
+        grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 40px; color: #666;">No hay productos registrados</p>';
+        return;
+    }
+    
+    productos.forEach(prod => {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        
+        const estadoBadge = prod.status === 'disponible' ? 
+            '<span class="badge badge-success">Disponible</span>' : 
+            '<span class="badge badge-danger">No Disponible</span>';
+        
+        const imagen = prod.img || 'https://via.placeholder.com/200x150?text=Sin+Imagen';
+        
+        card.innerHTML = `
+            <div class="product-image">
+                <img src="${imagen}" alt="${prod.nombre}" onerror="this.src='https://via.placeholder.com/200x150?text=Sin+Imagen'">
+            </div>
+            <div class="product-info">
+                <h3>${prod.nombre} ${estadoBadge}</h3>
+                <p class="product-category">${prod.categoria}</p>
+                <p class="product-description">${prod.descripcion || 'Sin descripción'}</p>
+                <div class="product-pricing">
+                    <div class="price-item">
+                        <span class="price-label">Costo:</span>
+                        <span class="price-value">$${parseFloat(prod.costo).toFixed(2)}</span>
+                    </div>
+                    <div class="price-item">
+                        <span class="price-label">Precio:</span>
+                        <span class="price-value primary">$${parseFloat(prod.precio).toFixed(2)}</span>
+                    </div>
+                    ${prod.precio_puntos ? `
+                    <div class="price-item">
+                        <span class="price-label">Puntos:</span>
+                        <span class="price-value">${prod.precio_puntos} pts</span>
+                    </div>
+                    ` : ''}
+                </div>
+                <div class="product-actions">
+                    <button class="btn btn-primary btn-sm" onclick="editarProducto(${prod.id})">
+                        ✏️ Editar
+                    </button>
+                    ${prod.status === 'disponible' ? 
+                        `<button class="btn btn-danger btn-sm" onclick="desactivarProducto(${prod.id})">
+                            🚫 Desactivar
+                        </button>` :
+                        `<button class="btn btn-success btn-sm" onclick="activarProducto(${prod.id})">
+                            ✅ Activar
+                        </button>`
+                    }
+                </div>
+            </div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+async function mostrarModalProducto() {
+    // Cargar categorías activas
+    try {
+        const response = await fetch('/admin/api/categorias-admin');
+        const data = await response.json();
+        
+        if (data.success) {
+            const select = document.getElementById('producto-categoria');
+            select.innerHTML = '<option value="">Seleccionar categoría</option>';
+            
+            // Filtrar solo categorías activas
+            const categoriasActivas = data.categorias.filter(cat => cat.activo);
+            
+            categoriasActivas.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.id;
+                option.textContent = cat.nombre;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error al cargar categorías:', error);
+    }
+    
+    // Limpiar formulario
+    document.getElementById('form-producto').reset();
+    document.getElementById('producto-id').value = '';
+    document.getElementById('modal-producto-titulo').textContent = 'Nuevo Producto';
+    document.getElementById('precio-calculado-preview').textContent = '$0.00';
+    
+    // Mostrar modal
+    document.getElementById('modal-producto').style.display = 'block';
+}
+
+async function editarProducto(productoId) {
+    try {
+        const response = await fetch(`/admin/api/productos/${productoId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const producto = data.producto;
+            
+            // Cargar categorías primero
+            await mostrarModalProducto();
+            
+            // Llenar formulario
+            document.getElementById('producto-id').value = producto.id;
+            document.getElementById('producto-nombre').value = producto.nombre;
+            document.getElementById('producto-categoria').value = producto.categoria_id;
+            document.getElementById('producto-costo').value = parseFloat(producto.costo).toFixed(2);
+            
+            // Calcular ganancia basada en precio actual
+            const costo = parseFloat(producto.costo);
+            const precio = parseFloat(producto.precio);
+            const costoConIVA = costo * 1.16;
+            const ganancia = precio - costoConIVA;
+            
+            document.getElementById('producto-ganancia').value = ganancia.toFixed(2);
+            document.getElementById('producto-puntos').value = producto.precio_puntos || '';
+            document.getElementById('producto-descripcion').value = producto.descripcion || '';
+            document.getElementById('producto-img').value = producto.img || '';
+            document.getElementById('producto-disponible').checked = producto.status === 'disponible';
+            
+            document.getElementById('modal-producto-titulo').textContent = 'Editar Producto';
+            
+            // Actualizar preview
+            calcularPrecioVenta();
+        }
+    } catch (error) {
+        console.error('Error al cargar producto:', error);
+        alert('Error al cargar producto');
+    }
+}
+
+function cerrarModalProducto() {
+    document.getElementById('modal-producto').style.display = 'none';
+}
+
+// Calcular precio de venta automáticamente
+function calcularPrecioVenta() {
+    const costoInput = document.getElementById('producto-costo');
+    const gananciaInput = document.getElementById('producto-ganancia');
+    const precioPreview = document.getElementById('precio-calculado-preview');
+    
+    const costo = parseFloat(costoInput.value) || 0;
+    const ganancia = parseFloat(gananciaInput.value) || 0;
+    
+    // Fórmula: (Costo * 1.16) + Ganancia
+    const costoConIVA = costo * 1.16;
+    const precioVenta = costoConIVA + ganancia;
+    
+    precioPreview.textContent = `$${precioVenta.toFixed(2)}`;
+    precioPreview.style.color = precioVenta > 0 ? '#28a745' : '#666';
+}
+
+// Eventos para calcular precio en tiempo real
+document.getElementById('producto-costo')?.addEventListener('input', calcularPrecioVenta);
+document.getElementById('producto-ganancia')?.addEventListener('input', calcularPrecioVenta);
+
+// Manejar envío del formulario de producto
+document.getElementById('form-producto')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const productoId = document.getElementById('producto-id').value;
+    const nombre = document.getElementById('producto-nombre').value;
+    const categoriaId = document.getElementById('producto-categoria').value;
+    const costo = parseFloat(document.getElementById('producto-costo').value);
+    const ganancia = parseFloat(document.getElementById('producto-ganancia').value) || 0;
+    const puntos = document.getElementById('producto-puntos').value;
+    const descripcion = document.getElementById('producto-descripcion').value;
+    const img = document.getElementById('producto-img').value;
+    const disponible = document.getElementById('producto-disponible').checked;
+    
+    if (!nombre || !categoriaId || !costo) {
+        alert('Por favor complete todos los campos obligatorios');
+        return;
+    }
+    
+    // Calcular precio de venta
+    const precio = (costo * 1.16) + ganancia;
+    
+    const url = productoId ? 
+        `/admin/api/productos/${productoId}` : 
+        '/admin/api/productos';
+    
+    const method = productoId ? 'PUT' : 'POST';
+    
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                nombre: nombre,
+                categoria_id: parseInt(categoriaId),
+                costo: costo,
+                precio: precio,
+                precio_puntos: puntos ? parseInt(puntos) : null,
+                descripcion: descripcion,
+                img: img,
+                status: disponible ? 'disponible' : 'fuera de servicio'
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✅ Producto ${productoId ? 'actualizado' : 'creado'} exitosamente`);
+            cerrarModalProducto();
+            cargarProductos();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al guardar producto:', error);
+        alert('❌ Error al guardar producto');
+    }
+});
+
+async function desactivarProducto(productoId) {
+    if (!confirm('¿Desactivar este producto? No aparecerá en el sistema de ventas.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/admin/api/productos/${productoId}/desactivar`, {
+            method: 'PUT'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Producto desactivado exitosamente');
+            cargarProductos();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al desactivar producto:', error);
+        alert('❌ Error al desactivar producto');
+    }
+}
+
+async function activarProducto(productoId) {
+    try {
+        const response = await fetch(`/admin/api/productos/${productoId}/activar`, {
+            method: 'PUT'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Producto activado exitosamente');
+            cargarProductos();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al activar producto:', error);
+        alert('❌ Error al activar producto');
+    }
+}
+
+// ===== PERFILES =====
+async function cargarPerfiles() {
+    try {
+        const response = await fetch('/admin/api/empleados');
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarPerfiles(data.empleados);
+        } else {
+            alert('Error al cargar perfiles: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al cargar perfiles:', error);
+        alert('Error al cargar perfiles');
+    }
+}
+
+function mostrarPerfiles(empleados) {
+    const tbody = document.querySelector('#tabla-perfiles tbody');
+    tbody.innerHTML = '';
+    
+    if (empleados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">No hay perfiles registrados</td></tr>';
+        return;
+    }
+    
+    empleados.forEach(emp => {
+        const row = document.createElement('tr');
+        
+        const rolBadge = emp.rol === 'administrador' ? 
+            '<span class="badge badge-danger">Administrador</span>' : 
+            emp.rol === 'gerente' ? 
+            '<span class="badge badge-warning">Gerente</span>' : 
+            '<span class="badge badge-info">Cajero</span>';
+        
+        row.innerHTML = `
+            <td>${emp.id}</td>
+            <td>${emp.nombre}</td>
+            <td>${emp.codigo}</td>
+            <td>${rolBadge}</td>
+            <td>${emp.created_at || 'N/A'}</td>
+            <td><span class="badge badge-success">Activo</span></td>
+            <td>
+                <button class="btn btn-primary btn-sm" onclick="editarPerfil(${emp.id}, '${emp.nombre.replace(/'/g, "\\'")}', '${emp.codigo}', '${emp.rol}')">
+                    ✏️ Editar
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function mostrarModalPerfil() {
+    document.getElementById('form-perfil').reset();
+    document.getElementById('perfil-id').value = '';
+    document.getElementById('modal-perfil-titulo').textContent = 'Nuevo Perfil de Usuario';
+    document.getElementById('modal-perfil').style.display = 'block';
+}
+
+function editarPerfil(id, nombre, codigo, rol) {
+    document.getElementById('perfil-id').value = id;
+    document.getElementById('perfil-nombre').value = nombre;
+    document.getElementById('perfil-codigo').value = codigo;
+    document.getElementById('perfil-rol').value = rol;
+    document.getElementById('modal-perfil-titulo').textContent = 'Editar Perfil';
+    document.getElementById('modal-perfil').style.display = 'block';
+}
+
+function cerrarModalPerfil() {
+    document.getElementById('modal-perfil').style.display = 'none';
+}
+
+document.getElementById('form-perfil')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const perfilId = document.getElementById('perfil-id').value;
+    const nombre = document.getElementById('perfil-nombre').value;
+    const codigo = document.getElementById('perfil-codigo').value;
+    const rol = document.getElementById('perfil-rol').value;
+    
+    if (codigo.length !== 4 || !/^\d{4}$/.test(codigo)) {
+        alert('El código debe ser exactamente 4 dígitos numéricos');
+        return;
+    }
+    
+    const url = perfilId ? 
+        `/admin/api/empleados/${perfilId}` : 
+        '/admin/api/empleados';
+    
+    const method = perfilId ? 'PUT' : 'POST';
+    
+    try {
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                nombre: nombre,
+                codigo: codigo,
+                rol: rol
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert(`✅ Perfil ${perfilId ? 'actualizado' : 'creado'} exitosamente`);
+            cerrarModalPerfil();
+            cargarPerfiles();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al guardar perfil:', error);
+        alert('❌ Error al guardar perfil');
+    }
+});

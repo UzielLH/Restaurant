@@ -1097,3 +1097,173 @@ def activar_categoria_db(categoria_id):
         cursor.close()
         conn.close()
         raise e
+
+
+def get_producto_by_id(producto_id):
+    """Obtiene un producto por su ID"""
+    conn = get_db_connection()
+    cursor = conn.cursor(cursor_factory=RealDictCursor)
+    
+    cursor.execute("""
+        SELECT 
+            p.id, 
+            p.categoria_id,
+            c.nombre as categoria,
+            p.nombre,
+            p.costo,
+            p.precio,
+            p.precio_puntos,
+            p.descripcion,
+            p.img,
+            p.status
+        FROM producto p
+        INNER JOIN categoria c ON p.categoria_id = c.id
+        WHERE p.id = %s
+    """, (producto_id,))
+    
+    producto = cursor.fetchone()
+    cursor.close()
+    conn.close()
+    
+    if producto:
+        result = dict(producto)
+        result['costo'] = float(result['costo'])
+        result['precio'] = float(result['precio'])
+        return result
+    return None
+
+def crear_producto_db(data):
+    """Crea un nuevo producto"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            INSERT INTO producto (categoria_id, nombre, costo, precio, precio_puntos, descripcion, img, status)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id
+        """, (
+            data['categoria_id'],
+            data['nombre'],
+            data['costo'],
+            data['precio'],
+            data.get('precio_puntos'),
+            data.get('descripcion'),
+            data.get('img'),
+            data['status']
+        ))
+        producto_id = cursor.fetchone()[0]
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return producto_id
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e
+
+def actualizar_producto_db(producto_id, data):
+    """Actualiza un producto existente"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            UPDATE producto 
+            SET categoria_id = %s, nombre = %s, costo = %s, precio = %s, 
+                precio_puntos = %s, descripcion = %s, img = %s, status = %s
+            WHERE id = %s
+        """, (
+            data['categoria_id'],
+            data['nombre'],
+            data['costo'],
+            data['precio'],
+            data.get('precio_puntos'),
+            data.get('descripcion'),
+            data.get('img'),
+            data['status'],
+            producto_id
+        ))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e
+
+def cambiar_status_producto_db(producto_id, status):
+    """Cambia el status de un producto"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute(
+            "UPDATE producto SET status = %s WHERE id = %s",
+            (status, producto_id)
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e
+    
+
+def crear_empleado_db(data):
+    """Crea un nuevo empleado"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            INSERT INTO empleado (nombre, codigo, rol)
+            VALUES (%s, %s, %s)
+            RETURNING id
+        """, (
+            data['nombre'],
+            data['codigo'],
+            data['rol']
+        ))
+        empleado_id = cursor.fetchone()[0]
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return empleado_id
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e
+
+def actualizar_empleado_db(empleado_id, data):
+    """Actualiza un empleado existente"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            UPDATE empleado 
+            SET nombre = %s, codigo = %s, rol = %s
+            WHERE id = %s
+        """, (
+            data['nombre'],
+            data['codigo'],
+            data['rol'],
+            empleado_id
+        ))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Exception as e:
+        conn.rollback()
+        cursor.close()
+        conn.close()
+        raise e

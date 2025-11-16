@@ -309,24 +309,7 @@
                     <button class="btn btn-primary" onclick="mostrarModalProducto()">+ Nuevo Producto</button>
                 </div>
 
-                <div class="table-container">
-                    <table id="tabla-productos-admin">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Nombre</th>
-                                <th>Categoría</th>
-                                <th>Precio</th>
-                                <th>Costo</th>
-                                <th>Puntos</th>
-                                <th>Stock</th>
-                                <th>Estado</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
-                </div>
+                <div class="productos-grid" id="productos-grid"></div>
 
                 <!-- Modal Crear/Editar Producto -->
                 <div id="modal-producto" class="modal">
@@ -335,51 +318,88 @@
                         <h2 id="modal-producto-titulo">Nuevo Producto</h2>
                         <form id="form-producto">
                             <input type="hidden" id="producto-id">
+                            
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>Nombre del Producto</label>
+                                    <label>Nombre del Producto *</label>
                                     <input type="text" id="producto-nombre" class="form-control" required>
                                 </div>
                                 <div class="form-group">
-                                    <label>Categoría</label>
+                                    <label>Categoría *</label>
                                     <select id="producto-categoria" class="form-control" required>
                                         <option value="">Seleccionar categoría</option>
                                     </select>
                                 </div>
                             </div>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Precio de Venta</label>
-                                    <input type="number" id="producto-precio" class="form-control" step="0.01" required>
+
+                            <div class="pricing-calculator">
+                                <h3 style="margin-bottom: 15px; color: #667eea;">💰 Calculadora de Precio</h3>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Costo del Producto *</label>
+                                        <input type="number" id="producto-costo" class="form-control" 
+                                            step="0.01" min="0" required 
+                                            placeholder="Ej: 50.00">
+                                        <small style="color: #666;">Costo de adquisición o producción</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Ganancia Deseada *</label>
+                                        <input type="number" id="producto-ganancia" class="form-control" 
+                                            step="0.01" min="0" value="0"
+                                            placeholder="Ej: 20.00">
+                                        <small style="color: #666;">Cuánto desea ganar por unidad</small>
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label>Costo</label>
-                                    <input type="number" id="producto-costo" class="form-control" step="0.01" required>
+
+                                <div class="price-preview">
+                                    <div class="preview-item">
+                                        <span>Costo + IVA (16%):</span>
+                                        <span id="costo-iva-preview">Se calculará automáticamente</span>
+                                    </div>
+                                    <div class="preview-item final">
+                                        <span>Precio de Venta Final:</span>
+                                        <span id="precio-calculado-preview" style="font-size: 24px; font-weight: bold; color: #28a745;">$0.00</span>
+                                    </div>
+                                </div>
+
+                                <div style="background: #e7f3ff; padding: 12px; border-radius: 8px; margin-top: 10px;">
+                                    <small style="color: #0066cc;">
+                                        ℹ️ <strong>Fórmula:</strong> Precio Final = (Costo × 1.16) + Ganancia
+                                    </small>
                                 </div>
                             </div>
+
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>Precio en Puntos</label>
-                                    <input type="number" id="producto-puntos" class="form-control">
+                                    <label>Precio en Puntos (Opcional)</label>
+                                    <input type="number" id="producto-puntos" class="form-control" 
+                                        min="0" placeholder="Ej: 150">
+                                    <small style="color: #666;">Puntos necesarios para canjear</small>
                                 </div>
                                 <div class="form-group">
-                                    <label>Stock Inicial</label>
-                                    <input type="number" id="producto-stock" class="form-control" value="0">
+                                    <label>URL de Imagen</label>
+                                    <input type="url" id="producto-img" class="form-control" 
+                                        placeholder="https://ejemplo.com/imagen.jpg">
                                 </div>
                             </div>
+
                             <div class="form-group">
                                 <label>Descripción</label>
-                                <textarea id="producto-descripcion" class="form-control" rows="3"></textarea>
+                                <textarea id="producto-descripcion" class="form-control" rows="3"
+                                        placeholder="Descripción del producto..."></textarea>
                             </div>
+
                             <div class="form-group">
                                 <label>
                                     <input type="checkbox" id="producto-disponible" checked>
-                                    Producto disponible
+                                    Producto disponible para venta
                                 </label>
                             </div>
+
                             <div class="form-actions">
                                 <button type="button" class="btn btn-secondary" onclick="cerrarModalProducto()">Cancelar</button>
-                                <button type="submit" class="btn btn-primary">Guardar</button>
+                                <button type="submit" class="btn btn-primary">💾 Guardar Producto</button>
                             </div>
                         </form>
                     </div>

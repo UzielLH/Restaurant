@@ -337,3 +337,114 @@ def activar_categoria(categoria_id):
     except Exception as e:
         print(f"Error al activar categoría: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
+    
+# ===== PRODUCTOS =====
+@admin_bp.route('/api/productos', methods=['POST'])
+def crear_producto():
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    data = request.get_json()
+    
+    try:
+        from database.db import crear_producto_db
+        producto_id = crear_producto_db(data)
+        return jsonify({'success': True, 'message': 'Producto creado exitosamente', 'producto_id': producto_id})
+    except Exception as e:
+        print(f"Error al crear producto: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/productos/<int:producto_id>', methods=['GET'])
+def obtener_producto(producto_id):
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        from database.db import get_producto_by_id
+        producto = get_producto_by_id(producto_id)
+        if not producto:
+            return jsonify({'success': False, 'message': 'Producto no encontrado'}), 404
+        return jsonify({'success': True, 'producto': producto})
+    except Exception as e:
+        print(f"Error al obtener producto: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/productos/<int:producto_id>', methods=['PUT'])
+def actualizar_producto(producto_id):
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    data = request.get_json()
+    
+    try:
+        from database.db import actualizar_producto_db
+        actualizar_producto_db(producto_id, data)
+        return jsonify({'success': True, 'message': 'Producto actualizado exitosamente'})
+    except Exception as e:
+        print(f"Error al actualizar producto: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/productos/<int:producto_id>/desactivar', methods=['PUT'])
+def desactivar_producto(producto_id):
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        from database.db import cambiar_status_producto_db
+        cambiar_status_producto_db(producto_id, 'fuera de servicio')
+        return jsonify({'success': True, 'message': 'Producto desactivado exitosamente'})
+    except Exception as e:
+        print(f"Error al desactivar producto: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/productos/<int:producto_id>/activar', methods=['PUT'])
+def activar_producto(producto_id):
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    try:
+        from database.db import cambiar_status_producto_db
+        cambiar_status_producto_db(producto_id, 'disponible')
+        return jsonify({'success': True, 'message': 'Producto activado exitosamente'})
+    except Exception as e:
+        print(f"Error al activar producto: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# ===== EMPLEADOS/PERFILES =====
+@admin_bp.route('/api/empleados', methods=['POST'])
+def crear_empleado():
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    data = request.get_json()
+    
+    try:
+        from database.db import crear_empleado_db
+        empleado_id = crear_empleado_db(data)
+        return jsonify({'success': True, 'message': 'Perfil creado exitosamente', 'empleado_id': empleado_id})
+    except Exception as e:
+        print(f"Error al crear empleado: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+@admin_bp.route('/api/empleados/<int:empleado_id>', methods=['PUT'])
+def actualizar_empleado(empleado_id):
+    empleado = verificar_admin()
+    if not empleado:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    data = request.get_json()
+    
+    try:
+        from database.db import actualizar_empleado_db
+        actualizar_empleado_db(empleado_id, data)
+        return jsonify({'success': True, 'message': 'Perfil actualizado exitosamente'})
+    except Exception as e:
+        print(f"Error al actualizar empleado: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
