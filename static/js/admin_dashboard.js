@@ -1291,18 +1291,30 @@ function mostrarPerfiles(empleados) {
     tbody.innerHTML = '';
     
     if (empleados.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">No hay perfiles registrados</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 20px;">No hay perfiles registrados</td></tr>';
         return;
     }
     
     empleados.forEach(emp => {
         const row = document.createElement('tr');
         
-        const rolBadge = emp.rol === 'administrador' ? 
-            '<span class="badge badge-danger">Administrador</span>' : 
-            emp.rol === 'gerente' ? 
-            '<span class="badge badge-warning">Gerente</span>' : 
-            '<span class="badge badge-info">Cajero</span>';
+        let rolBadge = '';
+        switch(emp.rol) {
+            case 'administrador':
+                rolBadge = '<span class="badge badge-danger">Administrador</span>';
+                break;
+            case 'gerente':
+                rolBadge = '<span class="badge badge-warning">Gerente</span>';
+                break;
+            case 'cocinero':
+                rolBadge = '<span class="badge badge-success">Cocinero</span>';
+                break;
+            case 'cajero':
+                rolBadge = '<span class="badge badge-info">Cajero</span>';
+                break;
+            default:
+                rolBadge = `<span class="badge badge-secondary">${emp.rol}</span>`;
+        }
         
         row.innerHTML = `
             <td>${emp.id}</td>
@@ -1310,7 +1322,6 @@ function mostrarPerfiles(empleados) {
             <td>${emp.codigo}</td>
             <td>${rolBadge}</td>
             <td>${emp.created_at || 'N/A'}</td>
-            <td><span class="badge badge-success">Activo</span></td>
             <td>
                 <button class="btn btn-primary btn-sm" onclick="editarPerfil(${emp.id}, '${emp.nombre.replace(/'/g, "\\'")}', '${emp.codigo}', '${emp.rol}')">
                     ✏️ Editar

@@ -79,13 +79,27 @@ def dashboard():
     
     # Redirigir según el rol
     if empleado['rol'] == 'administrador':
-        return redirect(url_for('admin.dashboard'))  # Usar url_for con el namespace del Blueprint
+        return redirect(url_for('admin.dashboard'))
     elif empleado['rol'] == 'cajero':
         return redirect(url_for('cajero'))
     elif empleado['rol'] == 'gerente':
         return redirect(url_for('gerente_dashboard'))
+    elif empleado['rol'] == 'cocinero':
+        return redirect(url_for('cocinero_dashboard'))  # Nueva ruta para cocinero
     
     return render_template('dashboard.html', empleado=empleado)
+
+@app.route('/cocinero')
+def cocinero_dashboard():
+    session_id = session.get('session_id')
+    if not session_id:
+        return redirect(url_for('index'))
+    
+    empleado = get_session(session_id)
+    if not empleado or empleado['rol'] != 'cocinero':
+        return redirect(url_for('index'))
+    
+    return render_template('cocinero_dashboard.html', empleado=empleado)
 
 @app.route('/gerente')
 def gerente_dashboard():

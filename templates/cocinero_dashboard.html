@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Cocinero - Restaurant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cocinero.css') }}">
+</head>
+<body>
+    <div class="cocinero-container">
+        <header class="header">
+            <div class="header-left">
+                <h1>🍳 Cocina - Dashboard</h1>
+                <span class="user-info">{{ empleado.nombre }} (Cocinero)</span>
+            </div>
+            <div class="header-right">
+                <button class="btn-refresh" onclick="cargarOrdenes()">🔄 Actualizar</button>
+                <button class="btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <div class="stats-bar">
+                <div class="stat-card">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-info">
+                        <span class="stat-label">Órdenes Pendientes</span>
+                        <span class="stat-value" id="ordenes-pendientes">0</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-info">
+                        <span class="stat-label">Completadas Hoy</span>
+                        <span class="stat-value" id="ordenes-completadas">0</span>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏱️</div>
+                    <div class="stat-info">
+                        <span class="stat-label">Tiempo Promedio</span>
+                        <span class="stat-value" id="tiempo-promedio">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="ordenes-section">
+                <h2>Órdenes Activas</h2>
+                <div class="ordenes-grid" id="ordenes-grid">
+                    <!-- Las órdenes se cargarán dinámicamente aquí -->
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/cocinero.js') }}"></script>
+</body>
+</html>

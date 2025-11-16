@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS categoria (
 CREATE TABLE IF NOT EXISTS empleado (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
-    rol VARCHAR(20) NOT NULL CHECK (rol IN ('gerente', 'cajero', 'administrador')),
+    rol VARCHAR(20) NOT NULL CHECK (rol IN ('gerente', 'cajero', 'administrador', 'cocinero')),
     codigo CHAR(4) NOT NULL UNIQUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -118,6 +118,7 @@ INSERT INTO empleado (nombre, rol, codigo) VALUES
 ('Juan Pérez', 'gerente', '1234'),
 ('María García', 'cajero', '5678'),
 ('Carlos López', 'administrador', '9012')
+('Pedro Ramírez', 'cocinero', '3456')
 ON CONFLICT (codigo) DO NOTHING;
 
 -- Datos de ejemplo para clientes

@@ -421,55 +421,55 @@
                                 <th>Nombre</th>
                                 <th>Código</th>
                                 <th>Rol</th>
-                                <th>Fecha Creación</th>
-                                <th>Estado</th>
+                                <th>Fecha Registro</th>
                                 <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
                     </table>
                 </div>
-
-                <!-- Modal Crear/Editar Perfil -->
-                <div id="modal-perfil" class="modal">
-                    <div class="modal-content">
-                        <span class="close" onclick="cerrarModalPerfil()">&times;</span>
-                        <h2 id="modal-perfil-titulo">Nuevo Perfil de Usuario</h2>
-                        <form id="form-perfil">
-                            <input type="hidden" id="perfil-id">
-                            <div class="form-group">
-                                <label>Nombre Completo</label>
-                                <input type="text" id="perfil-nombre" class="form-control" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Código de Acceso (4 dígitos)</label>
-                                <input type="text" id="perfil-codigo" class="form-control" maxlength="4" pattern="[0-9]{4}" required>
-                            </div>
-                            <div class="form-group">
-                                <label>Rol</label>
-                                <select id="perfil-rol" class="form-control" required>
-                                    <option value="">Seleccionar rol</option>
-                                    <option value="cajero">Cajero</option>
-                                    <option value="administrador">Administrador</option>
-                                    <option value="gerente">Gerente</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>
-                                    <input type="checkbox" id="perfil-activo" checked>
-                                    Perfil activo
-                                </label>
-                            </div>
-                            <div class="form-actions">
-                                <button type="button" class="btn btn-secondary" onclick="cerrarModalPerfil()">Cancelar</button>
-                                <button type="submit" class="btn btn-primary">Guardar</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
             </section>
-        </main>
-    </div>
+
+            <!-- Modal Perfil -->
+            <div id="modal-perfil" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="cerrarModalPerfil()">&times;</span>
+                    <h2 id="modal-perfil-titulo">Nuevo Perfil de Usuario</h2>
+                    <form id="form-perfil">
+                        <input type="hidden" id="perfil-id">
+                        
+                        <div class="form-group">
+                            <label>Nombre Completo *</label>
+                            <input type="text" id="perfil-nombre" class="form-control" required 
+                                placeholder="Ej: Juan Pérez López">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Código de Acceso (4 dígitos) *</label>
+                            <input type="text" id="perfil-codigo" class="form-control" 
+                                required maxlength="4" pattern="\d{4}" 
+                                placeholder="1234">
+                            <small style="color: #666;">El código debe ser exactamente 4 dígitos numéricos</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Rol *</label>
+                            <select id="perfil-rol" class="form-control" required>
+                                <option value="">Seleccionar rol</option>
+                                <option value="cajero">Cajero</option>
+                                <option value="cocinero">Cocinero</option>
+                                <option value="gerente">Gerente</option>
+                                <option value="administrador">Administrador</option>
+                            </select>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="cerrarModalPerfil()">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Guardar Perfil</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
         <!-- Modal Descuento -->
     <div id="modal-descuento" class="modal">
