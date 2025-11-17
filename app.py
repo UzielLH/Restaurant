@@ -7,12 +7,13 @@ from database.redis_client import save_session, get_session, save_caja_inicial, 
 from datetime import datetime
 from utils.pdf_generator import generar_recibo_pdf
 from routes.admin_routes import admin_bp
+from routes.gerente_routes import gerente_bp
 import io
 
 app = Flask(__name__)
 app.config.from_object(Config)
 app.register_blueprint(admin_bp)
-
+app.register_blueprint(gerente_bp)
 @app.route('/')
 def index():
     return render_template('login.html')
@@ -103,15 +104,7 @@ def cocinero_dashboard():
 
 @app.route('/gerente')
 def gerente_dashboard():
-    session_id = session.get('session_id')
-    if not session_id:
-        return redirect(url_for('index'))
-    
-    empleado = get_session(session_id)
-    if not empleado or empleado['rol'] != 'gerente':
-        return redirect(url_for('index'))
-    
-    return render_template('gerente_dashboard.html', empleado=empleado)
+    return redirect(url_for('gerente.dashboard'))
 
 
 # @app.route('/admin')

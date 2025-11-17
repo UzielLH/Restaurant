@@ -78,51 +78,73 @@
                             
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>Nombre del Platillo</label>
+                                    <label>Nombre del Platillo *</label>
                                     <input type="text" id="edit-producto-nombre" class="form-control" required>
                                 </div>
                                 <div class="form-group">
-                                    <label>Categoría</label>
+                                    <label>Categoría *</label>
                                     <select id="edit-producto-categoria" class="form-control" required>
                                         <option value="">Seleccionar categoría</option>
                                     </select>
                                 </div>
                             </div>
 
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Costo del Producto</label>
-                                    <input type="number" id="edit-producto-costo" class="form-control" step="0.01" required>
-                                    <small>Costo de producción/compra</small>
+                            <div class="pricing-calculator">
+                                <h3 style="margin-bottom: 15px; color: #667eea;">💰 Calculadora de Precio</h3>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label>Costo del Producto *</label>
+                                        <input type="number" id="edit-producto-costo" class="form-control" 
+                                            step="0.01" min="0" required 
+                                            placeholder="Ej: 50.00">
+                                        <small style="color: #666;">Costo de adquisición o producción</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Ganancia Deseada *</label>
+                                        <input type="number" id="edit-producto-ganancia" class="form-control" 
+                                            step="0.01" min="0" value="0"
+                                            placeholder="Ej: 20.00">
+                                        <small style="color: #666;">Cuánto desea ganar por unidad</small>
+                                    </div>
                                 </div>
-                                <div class="form-group">
-                                    <label>Precio de Venta</label>
-                                    <input type="number" id="edit-producto-precio" class="form-control" step="0.01" required>
-                                    <small>Precio al cliente</small>
+
+                                <div class="price-preview">
+                                    <div class="preview-item">
+                                        <span>Costo + IVA (16%):</span>
+                                        <span id="edit-costo-iva-preview">Se calculará automáticamente</span>
+                                    </div>
+                                    <div class="preview-item final">
+                                        <span>Precio de Venta Final:</span>
+                                        <span id="edit-precio-calculado-preview" style="font-size: 24px; font-weight: bold; color: #28a745;">$0.00</span>
+                                    </div>
+                                </div>
+
+                                <div style="background: #e7f3ff; padding: 12px; border-radius: 8px; margin-top: 10px;">
+                                    <small style="color: #0066cc;">
+                                        ℹ️ <strong>Fórmula:</strong> Precio Final = (Costo × 1.16) + Ganancia
+                                    </small>
                                 </div>
                             </div>
 
                             <div class="form-row">
                                 <div class="form-group">
-                                    <label>Precio en Puntos</label>
-                                    <input type="number" id="edit-producto-puntos" class="form-control">
-                                    <small>Puntos necesarios para canjear</small>
+                                    <label>Precio en Puntos (Opcional)</label>
+                                    <input type="number" id="edit-producto-puntos" class="form-control" 
+                                        min="0" placeholder="Ej: 150">
+                                    <small style="color: #666;">Puntos necesarios para canjear</small>
                                 </div>
                                 <div class="form-group">
-                                    <label>Margen de Ganancia</label>
-                                    <input type="text" id="margen-ganancia" class="form-control" readonly>
-                                    <small>Calculado automáticamente</small>
+                                    <label>URL de Imagen</label>
+                                    <input type="url" id="edit-producto-img" class="form-control" 
+                                        placeholder="https://ejemplo.com/imagen.jpg">
                                 </div>
                             </div>
 
                             <div class="form-group">
                                 <label>Descripción</label>
-                                <textarea id="edit-producto-descripcion" class="form-control" rows="3"></textarea>
-                            </div>
-
-                            <div class="form-group">
-                                <label>URL de Imagen</label>
-                                <input type="text" id="edit-producto-img" class="form-control" placeholder="https://ejemplo.com/imagen.jpg">
+                                <textarea id="edit-producto-descripcion" class="form-control" rows="3"
+                                        placeholder="Descripción del producto..."></textarea>
                             </div>
 
                             <div class="form-group">
@@ -135,12 +157,11 @@
 
                             <div class="form-actions">
                                 <button type="button" class="btn btn-secondary" onclick="cerrarModalEditarProducto()">Cancelar</button>
-                                <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+                                <button type="submit" class="btn btn-primary">💾 Guardar Cambios</button>
                             </div>
                         </form>
                     </div>
                 </div>
-            </section>
 
             <!-- Descuentos Section -->
             <section id="descuentos" class="content-section">

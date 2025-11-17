@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     configurarNavegacion();
     cargarCategorias();
     cargarProductos();
+    configurarFiltros();
 });
 
 function inicializarGerente() {
@@ -49,6 +50,26 @@ function configurarNavegacion() {
     });
 }
 
+function configurarFiltros() {
+    // Filtro de búsqueda
+    const searchInput = document.getElementById('buscar-producto');
+    if (searchInput) {
+        searchInput.addEventListener('input', filtrarProductos);
+    }
+    
+    // Filtro de categoría
+    const categoriaSelect = document.getElementById('filtro-categoria');
+    if (categoriaSelect) {
+        categoriaSelect.addEventListener('change', filtrarProductos);
+    }
+    
+    // Filtro de estado
+    const statusSelect = document.getElementById('filtro-status');
+    if (statusSelect) {
+        statusSelect.addEventListener('change', filtrarProductos);
+    }
+}
+
 // ==================== GESTIÓN DE PLATILLOS ====================
 
 async function cargarCategorias() {
@@ -74,136 +95,340 @@ async function cargarCategorias() {
     }
 }
 
+function filtrarProductos() {
+    const searchTerm = document.getElementById('buscar-producto').value.toLowerCase();
+    const categoriaFilter = document.getElementById('filtro-categoria').value;
+    const statusFilter = document.getElementById('filtro-status').value;
+    
+    let productosFiltrados = [...productosData];
+    
+    // Filtrar por búsqueda
+    if (searchTerm) {
+        productosFiltrados = productosFiltrados.filter(p => 
+            p.nombre.toLowerCase().includes(searchTerm) || 
+            (p.descripcion && p.descripcion.toLowerCase().includes(searchTerm))
+        );
+    }
+    
+    // Filtrar por categoría
+    if (categoriaFilter) {
+        productosFiltrados = productosFiltrados.filter(p => 
+            p.categoria === categoriaFilter
+        );
+    }
+    
+    // Filtrar por estado
+    if (statusFilter) {
+        productosFiltrados = productosFiltrados.filter(p => 
+            p.status === statusFilter
+        );
+    }
+    
+    mostrarProductos(productosFiltrados);
+}
+
+
 async function cargarProductos() {
     try {
-        const response = await fetch('/api/productos');
+        const response = await fetch('/gerente/api/productos-gerente');
         const data = await response.json();
         
         if (data.success) {
             productosData = data.productos;
             mostrarProductos(data.productos);
+        } else {
+            alert('Error al cargar productos: ' + data.message);
         }
     } catch (error) {
         console.error('Error al cargar productos:', error);
-        mostrarAlerta('Error al cargar productos', 'error');
+        alert('Error al cargar productos');
     }
 }
 
 function mostrarProductos(productos) {
     const grid = document.getElementById('productos-grid');
+    grid.innerHTML = '';
     
     if (productos.length === 0) {
-        grid.innerHTML = '<p class="empty-message">No se encontraron productos</p>';
+        grid.innerHTML = '<p style="grid-column: 1/-1; text-align: center; padding: 40px; color: #666;">No hay productos registrados</p>';
         return;
     }
     
-    grid.innerHTML = productos.map(producto => `
-        <div class="producto-card">
-            <img src="${producto.img || 'https://via.placeholder.com/280x180'}" 
-                 alt="${producto.nombre}" 
-                 class="producto-img">
-            <div class="producto-info">
-                <span class="producto-categoria">${producto.categoria}</span>
-                <h3>${producto.nombre}</h3>
-                <p class="producto-descripcion">${producto.descripcion || 'Sin descripción'}</p>
-                
-                <div class="producto-precios">
-                    <div class="precio-item">
-                        <label>Costo</label>
-                        <span>$${parseFloat(producto.costo).toFixed(2)}</span>
+    productos.forEach(prod => {
+        const card = document.createElement('div');
+        card.className = 'product-card';
+        
+        const estadoBadge = prod.status === 'disponible' ? 
+            '<span class="badge badge-success">Disponible</span>' : 
+            '<span class="badge badge-danger">No Disponible</span>';
+        
+        const imagen = prod.img || 'https://via.placeholder.com/200x150?text=Sin+Imagen';
+        
+        card.innerHTML = `
+            <div class="product-image">
+                <img src="${imagen}" alt="${prod.nombre}" onerror="this.src='https://via.placeholder.com/200x150?text=Sin+Imagen'">
+            </div>
+            <div class="product-info">
+                <h3>${prod.nombre} ${estadoBadge}</h3>
+                <p class="product-category">${prod.categoria}</p>
+                <p class="product-description">${prod.descripcion || 'Sin descripción'}</p>
+                <div class="product-pricing">
+                    <div class="price-item">
+                        <span class="price-label">Costo:</span>
+                        <span class="price-value">$${parseFloat(prod.costo).toFixed(2)}</span>
                     </div>
-                    <div class="precio-item">
-                        <label>Precio</label>
-                        <span>$${parseFloat(producto.precio).toFixed(2)}</span>
+                    <div class="price-item">
+                        <span class="price-label">Precio:</span>
+                        <span class="price-value primary">$${parseFloat(prod.precio).toFixed(2)}</span>
                     </div>
-                    <div class="precio-item">
-                        <label>Margen</label>
-                        <span>${calcularMargen(producto.costo, producto.precio)}%</span>
+                    ${prod.precio_puntos ? `
+                    <div class="price-item">
+                        <span class="price-label">Puntos:</span>
+                        <span class="price-value">${prod.precio_puntos} pts</span>
                     </div>
+                    ` : ''}
                 </div>
-                
-                <span class="producto-status status-${producto.status === 'disponible' ? 'disponible' : 'fuera'}">
-                    ${producto.status === 'disponible' ? '✓ Disponible' : '✗ Fuera de Servicio'}
-                </span>
-                
-                <div class="producto-actions">
-                    <button class="btn btn-primary" onclick="editarProducto(${producto.id})">
-                        Editar
+                <div class="product-actions">
+                    <button class="btn btn-primary btn-sm" onclick="editarProducto(${prod.id})">
+                        ✏️ Editar
                     </button>
+                    ${prod.status === 'disponible' ? 
+                        `<button class="btn btn-danger btn-sm" onclick="desactivarProducto(${prod.id})">
+                            🚫 Desactivar
+                        </button>` :
+                        `<button class="btn btn-success btn-sm" onclick="activarProducto(${prod.id})">
+                            ✅ Activar
+                        </button>`
+                    }
                 </div>
             </div>
-        </div>
-    `).join('');
+        `;
+        grid.appendChild(card);
+    });
 }
 
-function calcularMargen(costo, precio) {
-    const margen = ((precio - costo) / precio) * 100;
-    return margen.toFixed(1);
-}
-
-function editarProducto(id) {
-    const producto = productosData.find(p => p.id === id);
-    if (!producto) return;
-    
-    document.getElementById('edit-producto-id').value = producto.id;
-    document.getElementById('edit-producto-nombre').value = producto.nombre;
-    document.getElementById('edit-producto-categoria').value = producto.categoria;
-    document.getElementById('edit-producto-costo').value = producto.costo;
-    document.getElementById('edit-producto-precio').value = producto.precio;
-    document.getElementById('edit-producto-puntos').value = producto.precio_puntos || '';
-    document.getElementById('edit-producto-descripcion').value = producto.descripcion || '';
-    document.getElementById('edit-producto-img').value = producto.img || '';
-    document.getElementById('edit-producto-status').value = producto.status;
-    
-    actualizarMargenGanancia();
-    
-    document.getElementById('modal-editar-producto').style.display = 'block';
-}
-
-function actualizarMargenGanancia() {
-    const costo = parseFloat(document.getElementById('edit-producto-costo').value) || 0;
-    const precio = parseFloat(document.getElementById('edit-producto-precio').value) || 0;
-    
-    if (precio > 0) {
-        const margen = calcularMargen(costo, precio);
-        const ganancia = precio - costo;
-        document.getElementById('margen-ganancia').value = 
-            `${margen}% ($${ganancia.toFixed(2)})`;
-    } else {
-        document.getElementById('margen-ganancia').value = '';
+async function editarProducto(productoId) {
+    try {
+        const response = await fetch(`/gerente/api/productos/${productoId}`);
+        const data = await response.json();
+        
+        if (data.success) {
+            const producto = data.producto;
+            
+            // Cargar categorías primero
+            await cargarCategoriasParaEdicion();
+            
+            // Llenar formulario con verificación de existencia
+            const setValueSafe = (id, value) => {
+                const element = document.getElementById(id);
+                if (element) element.value = value || '';
+            };
+            
+            setValueSafe('edit-producto-id', producto.id);
+            setValueSafe('edit-producto-nombre', producto.nombre);
+            setValueSafe('edit-producto-categoria', producto.categoria_id);
+            setValueSafe('edit-producto-costo', parseFloat(producto.costo).toFixed(2));
+            
+            // Calcular ganancia a partir de costo y precio
+            const costo = parseFloat(producto.costo);
+            const precio = parseFloat(producto.precio);
+            const costoConIVA = costo * 1.16;
+            const ganancia = precio - costoConIVA;
+            
+            setValueSafe('edit-producto-ganancia', ganancia > 0 ? ganancia.toFixed(2) : '0.00');
+            setValueSafe('edit-producto-puntos', producto.precio_puntos || '');
+            setValueSafe('edit-producto-descripcion', producto.descripcion || '');
+            setValueSafe('edit-producto-img', producto.img || '');
+            setValueSafe('edit-producto-status', producto.status);
+            
+            // Actualizar calculadora de precio
+            actualizarCalculadoraPrecio();
+            
+            document.getElementById('modal-editar-producto').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error al cargar producto:', error);
+        alert('Error al cargar producto: ' + error.message);
     }
 }
 
-// Listeners para actualizar margen automáticamente
-document.getElementById('edit-producto-costo')?.addEventListener('input', actualizarMargenGanancia);
-document.getElementById('edit-producto-precio')?.addEventListener('input', actualizarMargenGanancia);
+// Nueva función para actualizar la calculadora de precio
+function actualizarCalculadoraPrecio() {
+    const costo = parseFloat(document.getElementById('edit-producto-costo')?.value) || 0;
+    const ganancia = parseFloat(document.getElementById('edit-producto-ganancia')?.value) || 0;
+    
+    if (costo > 0) {
+        const costoConIVA = costo * 1.16;
+        const precioFinal = costoConIVA + ganancia;
+        
+        // Actualizar previews
+        const costoIVAPreview = document.getElementById('edit-costo-iva-preview');
+        const precioCalculadoPreview = document.getElementById('edit-precio-calculado-preview');
+        
+        if (costoIVAPreview) {
+            costoIVAPreview.textContent = `$${costoConIVA.toFixed(2)}`;
+        }
+        
+        if (precioCalculadoPreview) {
+            precioCalculadoPreview.textContent = `$${precioFinal.toFixed(2)}`;
+        }
+    } else {
+        const costoIVAPreview = document.getElementById('edit-costo-iva-preview');
+        const precioCalculadoPreview = document.getElementById('edit-precio-calculado-preview');
+        
+        if (costoIVAPreview) costoIVAPreview.textContent = 'Se calculará automáticamente';
+        if (precioCalculadoPreview) precioCalculadoPreview.textContent = '$0.00';
+    }
+}
+// Actualizar listeners para la calculadora
+document.getElementById('edit-producto-costo')?.addEventListener('input', actualizarCalculadoraPrecio);
+document.getElementById('edit-producto-ganancia')?.addEventListener('input', actualizarCalculadoraPrecio);
+
+async function cargarCategoriasParaEdicion() {
+    try {
+        const response = await fetch('/gerente/api/categorias-gerente');
+        const data = await response.json();
+        
+        if (data.success) {
+            const select = document.getElementById('edit-producto-categoria');
+            select.innerHTML = '<option value="">Seleccionar categoría</option>';
+            
+            // Filtrar solo categorías activas
+            const categoriasActivas = data.categorias.filter(cat => cat.activo);
+            
+            categoriasActivas.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.id;
+                option.textContent = cat.nombre;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error al cargar categorías:', error);
+    }
+}
+
+// Manejar envío del formulario de edición
+// Manejar envío del formulario de edición
+document.getElementById('form-editar-producto')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    
+    const productoId = document.getElementById('edit-producto-id').value;
+    const nombre = document.getElementById('edit-producto-nombre').value;
+    const categoriaId = document.getElementById('edit-producto-categoria').value;
+    const costo = parseFloat(document.getElementById('edit-producto-costo').value);
+    const ganancia = parseFloat(document.getElementById('edit-producto-ganancia').value) || 0;
+    
+    // Calcular precio final usando la fórmula: Precio = (Costo × 1.16) + Ganancia
+    const costoConIVA = costo * 1.16;
+    const precio = costoConIVA + ganancia;
+    
+    const puntos = document.getElementById('edit-producto-puntos').value;
+    const descripcion = document.getElementById('edit-producto-descripcion').value;
+    const img = document.getElementById('edit-producto-img').value;
+    const status = document.getElementById('edit-producto-status').value;
+    
+    if (!nombre || !categoriaId || !costo || isNaN(precio)) {
+        alert('Por favor complete todos los campos obligatorios correctamente');
+        return;
+    }
+    
+    if (precio <= 0) {
+        alert('El precio final debe ser mayor a 0');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/gerente/api/productos/${productoId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                nombre: nombre,
+                categoria_id: parseInt(categoriaId),
+                costo: parseFloat(costo.toFixed(2)),
+                precio: parseFloat(precio.toFixed(2)),
+                precio_puntos: puntos ? parseInt(puntos) : null,
+                descripcion: descripcion,
+                img: img,
+                status: status
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Producto actualizado exitosamente\n\nCosto: $' + costo.toFixed(2) + 
+                  '\nCosto + IVA: $' + costoConIVA.toFixed(2) + 
+                  '\nGanancia: $' + ganancia.toFixed(2) + 
+                  '\nPrecio Final: $' + precio.toFixed(2));
+            cerrarModalEditarProducto();
+            cargarProductos();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al actualizar producto:', error);
+        alert('❌ Error al actualizar producto');
+    }
+});
+
+async function desactivarProducto(productoId) {
+    if (!confirm('¿Desactivar este producto? No aparecerá en el sistema de ventas.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/gerente/api/productos/${productoId}/desactivar`, {
+            method: 'PUT'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Producto desactivado exitosamente');
+            cargarProductos();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al desactivar producto:', error);
+        alert('❌ Error al desactivar producto');
+    }
+}
+
+async function activarProducto(productoId) {
+    try {
+        const response = await fetch(`/gerente/api/productos/${productoId}/activar`, {
+            method: 'PUT'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Producto activado exitosamente');
+            cargarProductos();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al activar producto:', error);
+        alert('❌ Error al activar producto');
+    }
+}
 
 function cerrarModalEditarProducto() {
     document.getElementById('modal-editar-producto').style.display = 'none';
 }
 
-// Form submit para editar producto
-document.getElementById('form-editar-producto')?.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    
-    const productoData = {
-        id: document.getElementById('edit-producto-id').value,
-        nombre: document.getElementById('edit-producto-nombre').value,
-        categoria: document.getElementById('edit-producto-categoria').value,
-        costo: parseFloat(document.getElementById('edit-producto-costo').value),
-        precio: parseFloat(document.getElementById('edit-producto-precio').value),
-        precio_puntos: parseInt(document.getElementById('edit-producto-puntos').value) || 0,
-        descripcion: document.getElementById('edit-producto-descripcion').value,
-        img: document.getElementById('edit-producto-img').value,
-        status: document.getElementById('edit-producto-status').value
-    };
-    
-    // TODO: Implementar endpoint para actualizar producto
-    console.log('Actualizando producto:', productoData);
-    mostrarAlerta('Producto actualizado exitosamente', 'success');
-    cerrarModalEditarProducto();
-    cargarProductos();
-});
+// Cerrar modales al hacer clic fuera
+window.onclick = function(event) {
+    if (event.target.classList.contains('modal')) {
+        event.target.style.display = 'none';
+    }
+};
+
 
 // ==================== GESTIÓN DE DESCUENTOS ====================
 
