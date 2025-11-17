@@ -1,6 +1,6 @@
-from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
-from reportlab.lib.units import inch
+from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
@@ -11,7 +11,7 @@ from io import BytesIO
 
 def generar_recibo_pdf(venta_data):
     """
-    Genera un PDF de recibo de venta
+    Genera un PDF de recibo de venta para impresora de tickets (80mm)
     
     Args:
         venta_data: dict con los datos de la venta
@@ -30,7 +30,6 @@ def generar_recibo_pdf(venta_data):
     # Obtener configuración del ticket
     config = get_configuracion_ticket()
     if not config:
-        # Valores por defecto si no hay configuración
         config = {
             'nombre_negocio': 'RESTAURANT LA SALLE',
             'direccion': '',
@@ -43,136 +42,133 @@ def generar_recibo_pdf(venta_data):
             'logo_url': None
         }
     
-    # Crear documento PDF
-    doc = SimpleDocTemplate(buffer, pagesize=letter, 
-                           rightMargin=72, leftMargin=72,
-                           topMargin=72, bottomMargin=18)
+    # Tamaño de ticket de 80mm de ancho (con márgenes mínimos)
+    ticket_width = 80 * mm
+    ticket_height = 297 * mm  # Altura variable
     
-    # Contenedor para los elementos del PDF
+    # Crear documento PDF con tamaño de ticket
+    doc = SimpleDocTemplate(
+        buffer, 
+        pagesize=(ticket_width, ticket_height),
+        rightMargin=5*mm,
+        leftMargin=5*mm,
+        topMargin=5*mm,
+        bottomMargin=5*mm
+    )
+    
     elementos = []
-    
-    # Estilos
     styles = getSampleStyleSheet()
     
-    # Estilo personalizado para el título
+    # Ancho disponible para contenido
+    ancho_contenido = ticket_width - 10*mm
+    
+    # ========== ESTILOS PERSONALIZADOS ==========
     titulo_style = ParagraphStyle(
-        'CustomTitle',
-        parent=styles['Heading1'],
-        fontSize=24,
-        textColor=colors.HexColor('#667eea'),
-        spaceAfter=10,
-        alignment=TA_CENTER
-    )
-    
-    # Estilo para subtítulos
-    subtitulo_style = ParagraphStyle(
-        'Subtitle',
+        'TituloTicket',
         parent=styles['Normal'],
-        fontSize=12,
-        textColor=colors.grey,
+        fontSize=14,
+        fontName='Helvetica-Bold',
+        textColor=colors.black,
         alignment=TA_CENTER,
-        spaceAfter=20
+        spaceAfter=3
     )
     
-    # Estilo para info
     info_style = ParagraphStyle(
-        'Info',
+        'InfoTicket',
         parent=styles['Normal'],
-        fontSize=10,
-        spaceAfter=5
+        fontSize=8,
+        alignment=TA_CENTER,
+        textColor=colors.black,
+        spaceAfter=2
     )
     
-    # Agregar logo si existe
+    header_style = ParagraphStyle(
+        'HeaderTicket',
+        parent=styles['Normal'],
+        fontSize=7,
+        alignment=TA_CENTER,
+        textColor=colors.grey,
+        spaceAfter=1
+    )
+    
+    dato_style = ParagraphStyle(
+        'DatoTicket',
+        parent=styles['Normal'],
+        fontSize=8,
+        alignment=TA_LEFT,
+        spaceAfter=1
+    )
+    
+    separador_style = ParagraphStyle(
+        'Separador',
+        parent=styles['Normal'],
+        fontSize=8,
+        alignment=TA_CENTER,
+        spaceAfter=2
+    )
+    
+    # ========== LOGO ==========
     if config.get('logo_url'):
         try:
             response = requests.get(config['logo_url'], timeout=5)
             if response.status_code == 200:
                 img_buffer = BytesIO(response.content)
-                logo = Image(img_buffer, width=2*inch, height=1*inch)
+                logo = Image(img_buffer, width=30*mm, height=15*mm)
                 logo.hAlign = 'CENTER'
                 elementos.append(logo)
-                elementos.append(Spacer(1, 0.2*inch))
+                elementos.append(Spacer(1, 2*mm))
         except Exception as e:
-            print(f"Error al cargar logo desde URL: {e}")
+            print(f"Error al cargar logo: {e}")
     
-    # Encabezado - Nombre del negocio
+    # ========== ENCABEZADO - NOMBRE DEL NEGOCIO ==========
     titulo = Paragraph(config.get('nombre_negocio', 'RESTAURANT LA SALLE'), titulo_style)
     elementos.append(titulo)
     
-    # Encabezado legal/fiscal si existe
+    # ========== INFORMACIÓN DEL NEGOCIO ==========
+    if config.get('direccion'):
+        elementos.append(Paragraph(config['direccion'], info_style))
+    if config.get('telefono'):
+        elementos.append(Paragraph(f"Tel: {config['telefono']}", info_style))
+    if config.get('rfc'):
+        elementos.append(Paragraph(f"RFC: {config['rfc']}", info_style))
+    
+    elementos.append(Spacer(1, 2*mm))
+    
+    # ========== ENCABEZADO LEGAL ==========
     if config.get('encabezado'):
-        encabezado_style = ParagraphStyle(
-            'Encabezado',
-            parent=styles['Normal'],
-            fontSize=8,
-            textColor=colors.grey,
-            alignment=TA_CENTER,
-            spaceAfter=5
-        )
         for linea in config['encabezado'].split('\n'):
             if linea.strip():
-                elementos.append(Paragraph(linea, encabezado_style))
-        elementos.append(Spacer(1, 0.1*inch))
+                elementos.append(Paragraph(linea.strip(), header_style))
+        elementos.append(Spacer(1, 2*mm))
     
-    # Información del negocio (dirección, teléfono, RFC)
-    if config.get('direccion') or config.get('telefono') or config.get('rfc'):
-        info_negocio_style = ParagraphStyle(
-            'InfoNegocio',
-            parent=styles['Normal'],
-            fontSize=9,
-            textColor=colors.grey,
-            alignment=TA_CENTER,
-            spaceAfter=3
-        )
-        if config.get('direccion'):
-            elementos.append(Paragraph(config['direccion'], info_negocio_style))
-        if config.get('telefono'):
-            elementos.append(Paragraph(f"Tel: {config['telefono']}", info_negocio_style))
-        if config.get('rfc'):
-            elementos.append(Paragraph(f"RFC: {config['rfc']}", info_negocio_style))
-        elementos.append(Spacer(1, 0.1*inch))
+    # ========== SEPARADOR ==========
+    elementos.append(Paragraph('=' * 42, separador_style))
+    elementos.append(Paragraph('TICKET DE COMPRA', info_style))
+    elementos.append(Paragraph('=' * 42, separador_style))
+    elementos.append(Spacer(1, 2*mm))
     
-    subtitulo = Paragraph("Recibo de Compra", subtitulo_style)
-    elementos.append(subtitulo)
-    
-    elementos.append(Spacer(1, 0.2*inch))
-    
-    # Información de la venta
+    # ========== INFORMACIÓN DE LA VENTA ==========
     fecha_format = datetime.strptime(venta_data['fecha_venta'], '%Y-%m-%d %H:%M:%S')
     fecha_str = fecha_format.strftime('%d/%m/%Y %I:%M %p')
     
-    info_data = [
-        ['Orden:', venta_data['orden_id'][:8].upper()],
-        ['Fecha:', fecha_str],
-        ['Cajero:', venta_data['cajero_nombre']],
-    ]
+    dato_bold_style = ParagraphStyle(
+        'DatoBold',
+        parent=styles['Normal'],
+        fontSize=8,
+        alignment=TA_LEFT,
+        spaceAfter=1
+    )
     
-    info_table = Table(info_data, colWidths=[1.5*inch, 4*inch])
-    info_table.setStyle(TableStyle([
-        ('FONT', (0, 0), (-1, -1), 'Helvetica', 10),
-        ('FONT', (0, 0), (0, -1), 'Helvetica-Bold', 10),
-        ('TEXTCOLOR', (0, 0), (0, -1), colors.HexColor('#667eea')),
-        ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
-        ('ALIGN', (1, 0), (1, -1), 'LEFT'),
-        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-    ]))
+    elementos.append(Paragraph(f"Orden: {venta_data['orden_id'][:8].upper()}", dato_bold_style))
+    elementos.append(Paragraph(f"Fecha: {fecha_str}", dato_style))
+    elementos.append(Paragraph(f"Cajero: {venta_data['cajero_nombre']}", dato_style))
     
-    elementos.append(info_table)
-    elementos.append(Spacer(1, 0.3*inch))
+    elementos.append(Spacer(1, 2*mm))
+    elementos.append(Paragraph('-' * 42, separador_style))
     
-    # Línea separadora
-    line_data = [['_' * 80]]
-    line_table = Table(line_data, colWidths=[6.5*inch])
-    line_table.setStyle(TableStyle([
-        ('TEXTCOLOR', (0, 0), (-1, -1), colors.grey),
-        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-    ]))
-    elementos.append(line_table)
-    elementos.append(Spacer(1, 0.2*inch))
-    
-    # Tabla de productos
-    productos_data = [['Cant.', 'Producto', 'P. Unit.', 'Subtotal']]
+    # ========== TABLA DE PRODUCTOS ==========
+    # Encabezado de productos
+    productos_header = [['Cant', 'Producto', 'Importe']]
     
     for item in venta_data['items']:
         cantidad = int(item['cantidad'])
@@ -180,102 +176,117 @@ def generar_recibo_pdf(venta_data):
         precio = float(item['precio'])
         subtotal = precio * cantidad
         
-        productos_data.append([
+        # Limitar nombre a 20 caracteres para que quepa
+        nombre_corto = nombre[:20] if len(nombre) > 20 else nombre
+        
+        productos_header.append([
             str(cantidad),
-            nombre,
-            f"${precio:.2f}",
+            nombre_corto,
             f"${subtotal:.2f}"
         ])
     
-    productos_table = Table(productos_data, colWidths=[0.8*inch, 3*inch, 1.2*inch, 1.2*inch])
-    productos_table.setStyle(TableStyle([
+    # Crear tabla con anchos específicos para ticket de 80mm
+    tabla_productos = Table(
+        productos_header, 
+        colWidths=[10*mm, 40*mm, 20*mm]
+    )
+    
+    tabla_productos.setStyle(TableStyle([
         # Encabezado
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#667eea')),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 11),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('FONT', (0, 0), (-1, 0), 'Helvetica-Bold', 8),
+        ('ALIGN', (0, 0), (0, 0), 'CENTER'),
+        ('ALIGN', (1, 0), (1, 0), 'LEFT'),
+        ('ALIGN', (2, 0), (2, 0), 'RIGHT'),
+        ('LINEBELOW', (0, 0), (-1, 0), 1, colors.black),
+        ('TOPPADDING', (0, 0), (-1, 0), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 2),
         
         # Contenido
-        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-        ('FONTSIZE', (0, 1), (-1, -1), 10),
+        ('FONT', (0, 1), (-1, -1), 'Helvetica', 8),
         ('ALIGN', (0, 1), (0, -1), 'CENTER'),
         ('ALIGN', (1, 1), (1, -1), 'LEFT'),
-        ('ALIGN', (2, 1), (-1, -1), 'RIGHT'),
-        ('TOPPADDING', (0, 1), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 1), (-1, -1), 8),
-        
-        # Líneas
-        ('LINEBELOW', (0, 0), (-1, 0), 2, colors.HexColor('#667eea')),
-        ('LINEBELOW', (0, 1), (-1, -1), 0.5, colors.lightgrey),
-        ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+        ('ALIGN', (2, 1), (2, -1), 'RIGHT'),
+        ('TOPPADDING', (0, 1), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 1), (-1, -1), 2),
     ]))
     
-    elementos.append(productos_table)
-    elementos.append(Spacer(1, 0.3*inch))
+    elementos.append(tabla_productos)
+    elementos.append(Spacer(1, 2*mm))
+    elementos.append(Paragraph('-' * 42, separador_style))
     
-    # Totales
+    # ========== TOTALES ==========
     total = float(venta_data['total'])
     pago_con = float(venta_data['pago_con'])
     cambio = float(venta_data['cambio'])
     
+    # Estilo para totales normales
+    total_normal_style = ParagraphStyle(
+        'TotalNormal',
+        parent=styles['Normal'],
+        fontSize=9,
+        alignment=TA_RIGHT
+    )
+    
+    # Estilo para TOTAL en negrita
+    total_bold_style = ParagraphStyle(
+        'TotalBold',
+        parent=styles['Normal'],
+        fontSize=10,
+        fontName='Helvetica-Bold',
+        alignment=TA_RIGHT
+    )
+    
     totales_data = [
-        ['Subtotal:', f"${total:.2f}"],
-        ['Total:', f"${total:.2f}"],
-        ['Pagó con:', f"${pago_con:.2f}"],
+        [Paragraph('Subtotal:', total_normal_style), Paragraph(f"${total:.2f}", total_normal_style)],
+        [Paragraph('TOTAL:', total_bold_style), Paragraph(f"${total:.2f}", total_bold_style)],
+        [Paragraph('Pagó con:', total_normal_style), Paragraph(f"${pago_con:.2f}", total_normal_style)]
     ]
     
     if cambio > 0:
-        totales_data.append(['Cambio:', f"${cambio:.2f}"])
+        totales_data.append([
+            Paragraph('Su cambio:', total_normal_style), 
+            Paragraph(f"${cambio:.2f}", total_normal_style)
+        ])
     
-    totales_table = Table(totales_data, colWidths=[4.5*inch, 1.5*inch])
-    totales_table.setStyle(TableStyle([
-        ('FONT', (0, 0), (0, -2), 'Helvetica', 11),
-        ('FONT', (0, -1), (0, -1), 'Helvetica-Bold', 12),
-        ('FONT', (1, 0), (1, -2), 'Helvetica', 11),
-        ('FONT', (1, -1), (1, -1), 'Helvetica-Bold', 12),
+    tabla_totales = Table(totales_data, colWidths=[40*mm, 30*mm])
+    tabla_totales.setStyle(TableStyle([
         ('ALIGN', (0, 0), (0, -1), 'RIGHT'),
         ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
-        ('TEXTCOLOR', (0, -1), (-1, -1), colors.HexColor('#667eea')),
-        ('LINEABOVE', (0, -1), (-1, -1), 2, colors.HexColor('#667eea')),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('LINEABOVE', (0, 1), (-1, 1), 1, colors.black),
     ]))
     
-    elementos.append(totales_table)
-    elementos.append(Spacer(1, 0.3*inch))
+    elementos.append(tabla_totales)
+    elementos.append(Spacer(1, 3*mm))
     
-    # Pie de página con información de facturación
+    # ========== PIE DE PÁGINA ==========
     if config.get('pie_pagina'):
-        pie_style = ParagraphStyle(
-            'PiePagina',
-            parent=styles['Normal'],
-            fontSize=8,
-            textColor=colors.grey,
-            alignment=TA_CENTER,
-            spaceAfter=3
-        )
+        elementos.append(Paragraph('=' * 42, separador_style))
         for linea in config['pie_pagina'].split('\n'):
             if linea.strip():
-                elementos.append(Paragraph(linea, pie_style))
-        elementos.append(Spacer(1, 0.2*inch))
+                elementos.append(Paragraph(linea.strip(), header_style))
+        elementos.append(Spacer(1, 2*mm))
     
-    # Mensaje de agradecimiento
-    gracias_style = ParagraphStyle(
+    # ========== MENSAJE DE AGRADECIMIENTO ==========
+    elementos.append(Paragraph('=' * 42, separador_style))
+    
+    mensaje_gracias_style = ParagraphStyle(
         'Gracias',
         parent=styles['Normal'],
-        fontSize=14,
-        textColor=colors.HexColor('#667eea'),
+        fontSize=10,
+        fontName='Helvetica-Bold',
         alignment=TA_CENTER,
-        spaceAfter=10
+        spaceAfter=2
     )
     
-    mensaje_gracias = Paragraph(config.get('mensaje_agradecimiento', '¡Gracias por su compra!'), gracias_style)
-    elementos.append(mensaje_gracias)
+    elementos.append(Paragraph(
+        config.get('mensaje_agradecimiento', '¡Gracias por su compra!'), 
+        mensaje_gracias_style
+    ))
+    elementos.append(Paragraph('Esperamos verle pronto', info_style))
     
-    mensaje_final = Paragraph("Esperamos verle pronto", subtitulo_style)
-    elementos.append(mensaje_final)
+    elementos.append(Spacer(1, 5*mm))
     
     # Construir PDF
     doc.build(elementos)
