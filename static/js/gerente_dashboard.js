@@ -157,9 +157,10 @@ function mostrarProductos(productos) {
         const card = document.createElement('div');
         card.className = 'product-card';
         
+        // Badge de estado con clases correctas
         const estadoBadge = prod.status === 'disponible' ? 
-            '<span class="badge badge-success">Disponible</span>' : 
-            '<span class="badge badge-danger">No Disponible</span>';
+            '<span class="badge badge-disponible">Disponible</span>' : 
+            '<span class="badge badge-no-disponible">No Disponible</span>';
         
         const imagen = prod.img || 'https://via.placeholder.com/200x150?text=Sin+Imagen';
         
@@ -168,7 +169,10 @@ function mostrarProductos(productos) {
                 <img src="${imagen}" alt="${prod.nombre}" onerror="this.src='https://via.placeholder.com/200x150?text=Sin+Imagen'">
             </div>
             <div class="product-info">
-                <h3>${prod.nombre} ${estadoBadge}</h3>
+                <div class="product-header">
+                    <h3>${prod.nombre}</h3>
+                    ${estadoBadge}
+                </div>
                 <p class="product-category">${prod.categoria}</p>
                 <p class="product-description">${prod.descripcion || 'Sin descripción'}</p>
                 <div class="product-pricing">
