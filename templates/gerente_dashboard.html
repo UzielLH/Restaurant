@@ -27,10 +27,6 @@
                     <span class="icon">📋</span>
                     Generar Órdenes
                 </a>
-                <a href="#" class="nav-item" data-section="reportes">
-                    <span class="icon">📊</span>
-                    Reportes Rápidos
-                </a>
             </nav>
             <div class="sidebar-footer">
                 <button class="btn-logout" onclick="cerrarSesionGerente()">Cerrar Sesión</button>
@@ -162,38 +158,24 @@
                         </form>
                     </div>
                 </div>
+            </section>
 
             <!-- Descuentos Section -->
             <section id="descuentos" class="content-section">
                 <div class="section-header">
-                    <h1>Gestión de Descuentos</h1>
+                    <h1>Gestión de Descuentos por Cliente</h1>
                     <button class="btn btn-primary" onclick="mostrarModalDescuentoGerente()">+ Nuevo Descuento</button>
-                </div>
-
-                <div class="descuentos-stats">
-                    <div class="stat-card">
-                        <h3>Descuentos Activos</h3>
-                        <p class="stat-value" id="descuentos-activos">0</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Descuentos Vencidos</h3>
-                        <p class="stat-value" id="descuentos-vencidos">0</p>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Total Descuentos</h3>
-                        <p class="stat-value" id="total-descuentos">0</p>
-                    </div>
                 </div>
 
                 <div class="table-container">
                     <table id="tabla-descuentos-gerente">
                         <thead>
                             <tr>
-                                <th>Código</th>
-                                <th>Nombre</th>
-                                <th>Tipo</th>
-                                <th>Valor</th>
-                                <th>Vigencia</th>
+                                <th>Cliente</th>
+                                <th>Correo</th>
+                                <th>Descuento</th>
+                                <th>Fecha Inicio</th>
+                                <th>Fecha Expiración</th>
                                 <th>Estado</th>
                                 <th>Acciones</th>
                             </tr>
@@ -201,68 +183,44 @@
                         <tbody></tbody>
                     </table>
                 </div>
-
-                <!-- Modal Crear/Editar Descuento -->
-                <div id="modal-descuento-gerente" class="modal">
-                    <div class="modal-content">
-                        <span class="close" onclick="cerrarModalDescuentoGerente()">&times;</span>
-                        <h2 id="modal-descuento-titulo">Nuevo Descuento</h2>
-                        <form id="form-descuento-gerente">
-                            <input type="hidden" id="desc-id">
-                            
-                            <div class="form-group">
-                                <label>Código del Descuento</label>
-                                <input type="text" id="desc-codigo" class="form-control" required>
-                                <small>Código único que usarán los clientes</small>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Nombre/Descripción</label>
-                                <input type="text" id="desc-nombre" class="form-control" required>
-                                <small>Ejemplo: "Descuento Navidad 2024"</small>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Tipo de Descuento</label>
-                                    <select id="desc-tipo" class="form-control" required onchange="actualizarEjemploDescuento()">
-                                        <option value="porcentaje">Porcentaje (%)</option>
-                                        <option value="fijo">Monto Fijo ($)</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label>Valor</label>
-                                    <input type="number" id="desc-valor" class="form-control" step="0.01" required onchange="actualizarEjemploDescuento()">
-                                    <small id="ejemplo-descuento">Ejemplo: 10% = $10 de descuento en compra de $100</small>
-                                </div>
-                            </div>
-
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label>Fecha Inicio</label>
-                                    <input type="date" id="desc-fecha-inicio" class="form-control" required>
-                                </div>
-                                <div class="form-group">
-                                    <label>Fecha Fin</label>
-                                    <input type="date" id="desc-fecha-fin" class="form-control" required>
-                                </div>
-                            </div>
-
-                            <div class="form-group">
-                                <label>
-                                    <input type="checkbox" id="desc-activo" checked>
-                                    Activar descuento inmediatamente
-                                </label>
-                            </div>
-
-                            <div class="form-actions">
-                                <button type="button" class="btn btn-secondary" onclick="cerrarModalDescuentoGerente()">Cancelar</button>
-                                <button type="submit" class="btn btn-primary">Guardar Descuento</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
             </section>
+
+            <!-- Modal Crear Descuento (FUERA de la sección, al final antes del cierre de main) -->
+            <div id="modal-descuento-gerente" class="modal">
+                <div class="modal-content">
+                    <span class="close" onclick="cerrarModalDescuentoGerente()">&times;</span>
+                    <h2 id="modal-descuento-titulo">Nuevo Descuento</h2>
+                    <form id="form-descuento-gerente">
+                        <div class="form-group">
+                            <label>Cliente (Opcional)</label>
+                            <select id="descuento-cliente-gerente" class="form-control">
+                                <option value="">Descuento general (sin cliente específico)</option>
+                            </select>
+                            <small style="color: #666;">Si no selecciona un cliente, el descuento será general</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Porcentaje de Descuento * (0-100)</label>
+                            <input type="number" id="descuento-porcentaje-gerente" class="form-control" 
+                                min="0" max="100" step="0.01" required 
+                                placeholder="Ej: 15.5">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha de Expiración (Opcional)</label>
+                            <input type="date" id="descuento-fecha-fin-gerente" class="form-control">
+                            <small style="color: #666;">Si no se especifica, el descuento no expirará</small>
+                        </div>
+                        <div class="form-group">
+                            <label>Notas (Opcional)</label>
+                            <textarea id="descuento-notas-gerente" class="form-control" rows="3" 
+                                    placeholder="Motivo del descuento, condiciones, etc."></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-secondary" onclick="cerrarModalDescuentoGerente()">Cancelar</button>
+                            <button type="submit" class="btn btn-primary">Guardar Descuento</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
 
             <!-- Generar Órdenes Section -->
             <section id="ordenes" class="content-section">
@@ -324,83 +282,6 @@
                 </div>
             </section>
 
-            <!-- Reportes Rápidos Section -->
-            <section id="reportes" class="content-section">
-                <div class="section-header">
-                    <h1>Reportes Rápidos</h1>
-                    <p>Visualiza estadísticas importantes del negocio</p>
-                </div>
-
-                <div class="reportes-filtros">
-                    <div class="form-group">
-                        <label>Período</label>
-                        <select id="reporte-periodo" class="form-control" onchange="cargarReportesRapidos()">
-                            <option value="hoy">Hoy</option>
-                            <option value="semana">Esta Semana</option>
-                            <option value="mes">Este Mes</option>
-                            <option value="personalizado">Personalizado</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="fechas-personalizadas" style="display: none;">
-                        <label>Fecha Inicio</label>
-                        <input type="date" id="reporte-fecha-inicio" class="form-control">
-                    </div>
-                    <div class="form-group" id="fechas-personalizadas-fin" style="display: none;">
-                        <label>Fecha Fin</label>
-                        <input type="date" id="reporte-fecha-fin" class="form-control">
-                    </div>
-                    <button class="btn btn-primary" onclick="cargarReportesRapidos()">Actualizar</button>
-                </div>
-
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <h3>Ventas del Período</h3>
-                        <p class="stat-value" id="reporte-ventas-total">$0.00</p>
-                        <span class="stat-label">Total en ventas</span>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Órdenes Procesadas</h3>
-                        <p class="stat-value" id="reporte-ordenes-cantidad">0</p>
-                        <span class="stat-label">Número de transacciones</span>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Ticket Promedio</h3>
-                        <p class="stat-value" id="reporte-ticket-promedio">$0.00</p>
-                        <span class="stat-label">Promedio por orden</span>
-                    </div>
-                    <div class="stat-card">
-                        <h3>Producto Más Vendido</h3>
-                        <p class="stat-value" id="reporte-producto-top">-</p>
-                        <span class="stat-label">Top seller</span>
-                    </div>
-                </div>
-
-                <div class="reportes-cards">
-                    <div class="report-card">
-                        <h3>Productos por Categoría</h3>
-                        <div class="chart-container">
-                            <canvas id="chart-categorias"></canvas>
-                        </div>
-                    </div>
-
-                    <div class="report-card">
-                        <h3>Top 5 Productos Más Vendidos</h3>
-                        <div class="table-container">
-                            <table id="tabla-top-productos">
-                                <thead>
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Producto</th>
-                                        <th>Cantidad</th>
-                                        <th>Total</th>
-                                    </tr>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </section>
         </main>
     </div>
 

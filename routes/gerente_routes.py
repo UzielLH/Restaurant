@@ -194,3 +194,91 @@ def get_categorias_gerente():
             'success': False,
             'message': 'Error al obtener categorías'
         }), 500
+
+# ===== DESCUENTOS =====
+@gerente_bp.route('/api/descuentos', methods=['GET'])
+def listar_descuentos():
+    session_id = session.get('session_id')
+    if not session_id:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    empleado = get_session(session_id)
+    if not empleado or empleado['rol'] != 'gerente':
+        return jsonify({'success': False, 'message': 'No autorizado'}), 403
+    
+    try:
+        from database.db import get_all_descuentos
+        descuentos = get_all_descuentos()
+        return jsonify({'success': True, 'descuentos': descuentos})
+    except Exception as e:
+        print(f"Error al obtener descuentos: {e}")
+        return jsonify({'success': False, 'message': 'Error al obtener descuentos'}), 500
+
+@gerente_bp.route('/api/descuentos', methods=['POST'])
+def crear_descuento():
+    session_id = session.get('session_id')
+    if not session_id:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    empleado = get_session(session_id)
+    if not empleado or empleado['rol'] != 'gerente':
+        return jsonify({'success': False, 'message': 'No autorizado'}), 403
+    
+    data = request.get_json()
+    cliente_id = data.get('cliente_id') or None
+    porcentaje_descuento = data.get('porcentaje_descuento')
+    fecha_fin = data.get('fecha_fin') or None
+    notas = data.get('notas') or None
+    
+    if not porcentaje_descuento:
+        return jsonify({'success': False, 'message': 'El porcentaje de descuento es requerido'}), 400
+    
+    try:
+        from database.db import crear_descuento_cliente
+        porcentaje = float(porcentaje_descuento)
+        if porcentaje < 0 or porcentaje > 100:
+            return jsonify({'success': False, 'message': 'El porcentaje debe estar entre 0 y 100'}), 400
+        
+        descuento_id = crear_descuento_cliente(cliente_id, porcentaje, fecha_fin, notas)
+        return jsonify({'success': True, 'message': 'Descuento creado exitosamente', 'descuento_id': descuento_id})
+    except Exception as e:
+        print(f"Error al crear descuento: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'message': f'Error al crear descuento: {str(e)}'}), 500
+
+@gerente_bp.route('/api/descuentos/<int:descuento_id>', methods=['DELETE'])
+def eliminar_descuento_route(descuento_id):
+    session_id = session.get('session_id')
+    if not session_id:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    empleado = get_session(session_id)
+    if not empleado or empleado['rol'] != 'gerente':
+        return jsonify({'success': False, 'message': 'No autorizado'}), 403
+    
+    try:
+        from database.db import eliminar_descuento_permanente
+        eliminar_descuento_permanente(descuento_id)
+        return jsonify({'success': True, 'message': 'Descuento eliminado exitosamente'})
+    except Exception as e:
+        print(f"Error al eliminar descuento: {e}")
+        return jsonify({'success': False, 'message': 'Error al eliminar descuento'}), 500
+
+@gerente_bp.route('/api/clientes', methods=['GET'])
+def listar_clientes():
+    session_id = session.get('session_id')
+    if not session_id:
+        return jsonify({'success': False, 'message': 'No autorizado'}), 401
+    
+    empleado = get_session(session_id)
+    if not empleado or empleado['rol'] != 'gerente':
+        return jsonify({'success': False, 'message': 'No autorizado'}), 403
+    
+    try:
+        from database.db import get_all_clientes
+        clientes = get_all_clientes()
+        return jsonify({'success': True, 'clientes': clientes})
+    except Exception as e:
+        print(f"Error al obtener clientes: {e}")
+        return jsonify({'success': False, 'message': 'Error al obtener clientes'}), 500

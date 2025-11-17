@@ -433,14 +433,83 @@ window.onclick = function(event) {
 // ==================== GESTIÓN DE DESCUENTOS ====================
 
 async function cargarDescuentos() {
-    // TODO: Implementar carga de descuentos desde API
-    console.log('Cargando descuentos...');
+    try {
+        const response = await fetch('/gerente/api/descuentos');
+        const data = await response.json();
+        
+        if (data.success) {
+            mostrarDescuentosGerente(data.descuentos);
+        } else {
+            alert('Error al cargar descuentos: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al cargar descuentos:', error);
+        alert('Error al cargar descuentos');
+    }
 }
 
-function mostrarModalDescuentoGerente() {
-    document.getElementById('modal-descuento-titulo').textContent = 'Nuevo Descuento';
+function mostrarDescuentosGerente(descuentos) {
+    const tbody = document.querySelector('#tabla-descuentos-gerente tbody');
+    tbody.innerHTML = '';
+    
+    if (descuentos.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">No hay descuentos registrados</td></tr>';
+        return;
+    }
+    
+    descuentos.forEach(desc => {
+        const row = document.createElement('tr');
+        const estado = desc.activo ? 
+            '<span class="badge badge-success">Activo</span>' : 
+            '<span class="badge badge-secondary">Inactivo</span>';
+        
+        const fechaFin = desc.fecha_fin ? 
+            new Date(desc.fecha_fin).toLocaleDateString('es-MX') : 
+            'Sin límite';
+        
+        const tipoDescuento = desc.cliente_id ? 
+            '' : 
+            '<span class="badge badge-warning" style="margin-left: 5px;">General</span>';
+        
+        row.innerHTML = `
+            <td>${desc.cliente_nombre}${tipoDescuento}</td>
+            <td>${desc.cliente_correo}</td>
+            <td style="font-weight: bold; color: #28a745;">${desc.porcentaje_descuento}%</td>
+            <td>${new Date(desc.fecha_inicio).toLocaleDateString('es-MX')}</td>
+            <td>${fechaFin}</td>
+            <td>${estado}</td>
+            <td>
+                <button class="btn btn-danger btn-sm" onclick="eliminarDescuentoGerente(${desc.id})">
+                    🗑️ Eliminar
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+async function mostrarModalDescuentoGerente() {
+    try {
+        const response = await fetch('/gerente/api/clientes');
+        const data = await response.json();
+        
+        if (data.success) {
+            const select = document.getElementById('descuento-cliente-gerente');
+            select.innerHTML = '<option value="">Descuento general (sin cliente específico)</option>';
+            
+            data.clientes.forEach(cliente => {
+                const option = document.createElement('option');
+                option.value = cliente.id;
+                option.textContent = `${cliente.nombre} (${cliente.correo})`;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('Error al cargar clientes:', error);
+    }
+    
     document.getElementById('form-descuento-gerente').reset();
-    document.getElementById('desc-id').value = '';
+    document.getElementById('modal-descuento-titulo').textContent = 'Nuevo Descuento';
     document.getElementById('modal-descuento-gerente').style.display = 'block';
 }
 
@@ -448,37 +517,73 @@ function cerrarModalDescuentoGerente() {
     document.getElementById('modal-descuento-gerente').style.display = 'none';
 }
 
-function actualizarEjemploDescuento() {
-    const tipo = document.getElementById('desc-tipo').value;
-    const valor = parseFloat(document.getElementById('desc-valor').value) || 0;
-    const ejemplo = document.getElementById('ejemplo-descuento');
-    
-    if (tipo === 'porcentaje') {
-        ejemplo.textContent = `Ejemplo: ${valor}% = $${(100 * valor / 100).toFixed(2)} de descuento en compra de $100`;
-    } else {
-        ejemplo.textContent = `Ejemplo: $${valor.toFixed(2)} de descuento fijo en cualquier compra`;
-    }
-}
-
+// Manejar envío del formulario de descuento
 document.getElementById('form-descuento-gerente')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     
-    const descuentoData = {
-        codigo: document.getElementById('desc-codigo').value,
-        nombre: document.getElementById('desc-nombre').value,
-        tipo: document.getElementById('desc-tipo').value,
-        valor: parseFloat(document.getElementById('desc-valor').value),
-        fecha_inicio: document.getElementById('desc-fecha-inicio').value,
-        fecha_fin: document.getElementById('desc-fecha-fin').value,
-        activo: document.getElementById('desc-activo').checked
-    };
+    const clienteId = document.getElementById('descuento-cliente-gerente').value;
+    const porcentaje = document.getElementById('descuento-porcentaje-gerente').value;
+    const fechaFin = document.getElementById('descuento-fecha-fin-gerente').value || null;
+    const notas = document.getElementById('descuento-notas-gerente').value || null;
     
-    // TODO: Implementar endpoint para crear descuento
-    console.log('Creando descuento:', descuentoData);
-    mostrarAlerta('Descuento creado exitosamente', 'success');
-    cerrarModalDescuentoGerente();
-    cargarDescuentos();
+    if (!porcentaje) {
+        alert('Por favor ingrese el porcentaje de descuento');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/gerente/api/descuentos', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                cliente_id: clienteId ? parseInt(clienteId) : null,
+                porcentaje_descuento: parseFloat(porcentaje),
+                fecha_fin: fechaFin,
+                notas: notas
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Descuento creado exitosamente');
+            cerrarModalDescuentoGerente();
+            cargarDescuentos();
+        } else {
+            alert('❌ Error: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al crear descuento:', error);
+        alert('❌ Error al crear descuento');
+    }
 });
+
+async function eliminarDescuentoGerente(descuentoId) {
+    if (!confirm('¿Está seguro de eliminar este descuento?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/gerente/api/descuentos/${descuentoId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Descuento eliminado exitosamente');
+            cargarDescuentos();
+        } else {
+            alert('❌ Error al eliminar descuento');
+        }
+    } catch (error) {
+        console.error('Error al eliminar descuento:', error);
+        alert('❌ Error al eliminar descuento');
+    }
+}
+
 
 // ==================== GENERAR ÓRDENES ====================
 
@@ -671,12 +776,6 @@ async function guardarOrdenGerente() {
     }
 }
 
-// ==================== REPORTES RÁPIDOS ====================
-
-async function cargarReportesRapidos() {
-    // TODO: Implementar carga de reportes
-    console.log('Cargando reportes rápidos...');
-}
 
 // ==================== UTILIDADES ====================
 
