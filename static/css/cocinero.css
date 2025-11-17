@@ -250,6 +250,78 @@ body {
     color: #666;
 }
 
+.connection-status {
+    margin-left: 15px;
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    font-weight: bold;
+    background: #f5f5f5;
+}
+
+.orden-card.nueva {
+    border-left: 4px solid #ff9800;
+    animation: pulseNew 2s infinite;
+}
+
+.orden-card.vista {
+    border-left: 4px solid #4caf50;
+    opacity: 0.7;
+}
+
+@keyframes pulseNew {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
+    }
+    50% {
+        box-shadow: 0 4px 16px rgba(255, 152, 0, 0.6);
+    }
+}
+
+.orden-badge-nueva {
+    display: inline-block;
+    background: #ff9800;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.orden-badge-vista {
+    display: inline-block;
+    background: #4caf50;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.btn-marcar-vista {
+    background: #2196f3;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.btn-marcar-vista:hover:not(:disabled) {
+    background: #1976d2;
+    transform: translateY(-2px);
+}
+
+.btn-marcar-vista:disabled {
+    background: #9e9e9e;
+    cursor: not-allowed;
+}
+
+
 /* Responsive */
 @media (max-width: 768px) {
     .header {

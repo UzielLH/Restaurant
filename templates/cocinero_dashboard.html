@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Cocinero - Restaurant</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cocinero.css') }}">
+    <!-- Agregar Socket.IO -->
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
 </head>
 <body>
     <div class="cocinero-container">
@@ -12,6 +14,7 @@
             <div class="header-left">
                 <h1>🍳 Cocina - Dashboard</h1>
                 <span class="user-info">{{ empleado.nombre }} (Cocinero)</span>
+                <span class="connection-status" id="connection-status">🔴 Desconectado</span>
             </div>
             <div class="header-right">
                 <button class="btn-refresh" onclick="cargarOrdenes()">🔄 Actualizar</button>
@@ -31,15 +34,15 @@
                 <div class="stat-card">
                     <div class="stat-icon">✅</div>
                     <div class="stat-info">
-                        <span class="stat-label">Completadas Hoy</span>
+                        <span class="stat-label">Vistas Hoy</span>
                         <span class="stat-value" id="ordenes-completadas">0</span>
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon">⏱️</div>
+                    <div class="stat-icon">🔔</div>
                     <div class="stat-info">
-                        <span class="stat-label">Tiempo Promedio</span>
-                        <span class="stat-value" id="tiempo-promedio">-</span>
+                        <span class="stat-label">Nuevas</span>
+                        <span class="stat-value" id="ordenes-nuevas">0</span>
                     </div>
                 </div>
             </div>
@@ -53,6 +56,10 @@
         </main>
     </div>
 
+    <!-- Pasar session_id al JavaScript -->
+    <script>
+        window.sessionId = "{{ session.get('session_id') }}";
+    </script>
     <script src="{{ url_for('static', filename='js/cocinero.js') }}"></script>
 </body>
 </html>

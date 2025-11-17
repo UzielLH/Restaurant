@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
 import uuid
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from config import Config
 from database.db import validate_empleado, get_all_productos, get_categorias, guardar_venta, get_venta_by_id, guardar_cierre_caja, get_ventas_por_cajero_hoy, get_cierres_caja_by_cajero, get_ventas_by_cajero, buscar_cliente_por_correo, crear_cliente, get_all_clientes, get_ventas_by_cajero_turno, get_resumen_ventas_turno
 from database.db import get_descuento_activo_cliente, eliminar_descuento_permanente
@@ -12,6 +13,11 @@ import io
 
 app = Flask(__name__)
 app.config.from_object(Config)
+
+# Configurar SocketIO
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
+
+
 app.register_blueprint(admin_bp)
 app.register_blueprint(gerente_bp)
 @app.route('/')
@@ -165,6 +171,10 @@ def crear_orden():
     if not empleado:
         return jsonify({'success': False, 'message': 'Sesión expirada'}), 401
     
+    # Permitir crear órdenes tanto a cajeros como a gerentes
+    if empleado['rol'] not in ['cajero', 'gerente']:
+        return jsonify({'success': False, 'message': 'No autorizado para crear órdenes'}), 403
+    
     data = request.get_json()
     items = data.get('items', [])
     notas = data.get('notas')
@@ -173,47 +183,49 @@ def crear_orden():
     if not items:
         return jsonify({'success': False, 'message': 'La orden está vacía'}), 400
     
-    # Convertir precios a float para asegurar cálculo correcto
-    for item in items:
-        item['precio'] = float(item['precio'])
-        item['costo'] = float(item.get('costo', 0))
-        item['cantidad'] = int(item['cantidad'])
-    
-    # Calcular total
-    total = sum(float(item['precio']) * int(item['cantidad']) for item in items)
-    
-    # Obtener nombre del cliente si existe
-    cliente_nombre = None
-    if cliente_id:
-        from database.db import get_cliente_by_id
-        cliente = get_cliente_by_id(cliente_id)
-        if cliente:
-            cliente_nombre = cliente['nombre']
-    
-    # Crear orden
-    orden_id = str(uuid.uuid4())
-    orden = {
-        'orden_id': orden_id,
-        'items': items,
-        'total': float(total),
-        'status': 'pendiente',
-        'cajero': empleado['nombre'],
-        'cajero_id': empleado['id'],
-        'fecha': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'notas': notas,
-        'cliente_id': cliente_id,
-        'cliente_nombre': cliente_nombre
-    }
-    
-    print(f"Guardando orden: {orden}")  # Debug
-    save_orden(orden_id, orden)
-    
-    return jsonify({
-        'success': True,
-        'message': 'Orden creada',
-        'orden_id': orden_id,
-        'orden': orden
-    })
+    try:
+        # Generar ID único para la orden
+        orden_id = str(uuid.uuid4())
+        
+        # Calcular total
+        total = sum(item['precio'] * item['cantidad'] for item in items)
+        
+        # Crear objeto de orden
+        orden = {
+            'orden_id': orden_id,
+            'cajero': empleado['nombre'],
+            'cajero_id': empleado['id'],
+            'items': items,
+            'total': float(total),
+            'status': 'pendiente',
+            'fecha': datetime.now().isoformat(),
+            'notas': notas,
+            'cliente_id': cliente_id
+        }
+        
+        # Guardar en Redis
+        save_orden(orden_id, orden)
+        
+        # EMITIR EVENTO DE SOCKET PARA COCINEROS
+        socketio.emit('nueva_orden', {
+            'orden_id': orden_id,
+            'orden': orden
+        }, room='cocineros')
+        
+        return jsonify({
+            'success': True,
+            'message': 'Orden creada',
+            'orden_id': orden_id
+        })
+        
+    except Exception as e:
+        print(f"Error al crear orden: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({
+            'success': False,
+            'message': 'Error al crear la orden'
+        }), 500
 
 @app.route('/api/ordenes', methods=['GET'])
 def listar_ordenes():
@@ -796,5 +808,64 @@ def obtener_descuento_cliente(cliente_id):
             'message': 'Error al obtener descuento'
         }), 500
 
+# ==================== EVENTOS DE SOCKETIO ====================
+
+@socketio.on('connect')
+def handle_connect():
+    print('Cliente conectado')
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print('Cliente desconectado')
+
+@socketio.on('join_cocinero')
+def handle_join_cocinero(data):
+    """Cuando un cocinero se conecta, se une a la sala de cocineros"""
+    session_id = data.get('session_id')
+    if session_id:
+        empleado = get_session(session_id)
+        if empleado and empleado['rol'] == 'cocinero':
+            join_room('cocineros')
+            print(f"Cocinero {empleado['nombre']} se unió a la sala")
+            
+            # Enviar órdenes pendientes actuales
+            ordenes = get_ordenes_pendientes()
+            emit('ordenes_actuales', {'ordenes': ordenes})
+
+@socketio.on('leave_cocinero')
+def handle_leave_cocinero():
+    """Cuando un cocinero se desconecta"""
+    leave_room('cocineros')
+    print('Cocinero salió de la sala')
+
+@socketio.on('marcar_orden_vista')
+def handle_marcar_orden_vista(data):
+    """Cuando el cocinero marca una orden como vista"""
+    orden_id = data.get('orden_id')
+    session_id = data.get('session_id')
+    
+    if not session_id:
+        emit('error', {'message': 'No autorizado'})
+        return
+    
+    empleado = get_session(session_id)
+    if not empleado or empleado['rol'] != 'cocinero':
+        emit('error', {'message': 'No autorizado'})
+        return
+    
+    if orden_id:
+        # Solo notificar que fue vista, NO eliminar de Redis
+        print(f"Orden {orden_id} marcada como vista por {empleado['nombre']}")
+        
+        # Emitir a todos los cocineros que la orden fue vista
+        socketio.emit('orden_vista', {
+            'orden_id': orden_id,
+            'cocinero': empleado['nombre']
+        }, room='cocineros')
+        
+        emit('success', {'message': 'Orden marcada como vista'})
+
+
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Usar socketio.run en lugar de app.run
+    socketio.run(app, debug=True, host='0.0.0.0', port=5000)
