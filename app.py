@@ -127,13 +127,24 @@ def cajero():
         return redirect(url_for('index'))
     
     empleado = get_session(session_id)
-    if not empleado or empleado['rol'] != 'cajero':
+    if not empleado:
         return redirect(url_for('index'))
+    
+    # Permitir acceso tanto a cajeros como a gerentes
+    if empleado['rol'] not in ['cajero', 'gerente']:
+        return redirect(url_for('index'))
+    
+    # Detectar si es gerente usando el cajero
+    es_gerente = empleado['rol'] == 'gerente'
     
     categorias = get_categorias()
     productos = get_all_productos()
     
-    return render_template('cajero.html', empleado=empleado, categorias=categorias, productos=productos)
+    return render_template('cajero.html', 
+                         empleado=empleado, 
+                         categorias=categorias, 
+                         productos=productos,
+                         es_gerente=es_gerente)
 
 @app.route('/api/productos', methods=['GET'])
 def get_productos():

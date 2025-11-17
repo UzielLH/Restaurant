@@ -225,64 +225,75 @@
             <!-- Generar Órdenes Section -->
             <section id="ordenes" class="content-section">
                 <div class="section-header">
-                    <h1>Generar Órdenes</h1>
-                    <p>Crea órdenes directamente desde el panel de gerente</p>
+                    <h1>Punto de Venta</h1>
+                    <p>Accede al sistema completo de cajero</p>
                 </div>
 
-                <div class="orden-container">
-                    <div class="productos-selection">
-                        <h3>Seleccionar Productos</h3>
-                        
-                        <div class="categoria-tabs" id="categoria-tabs">
-                            <!-- Las categorías se cargarán dinámicamente -->
-                        </div>
+                <div class="cajero-access-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 400px; gap: 30px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 80px; margin-bottom: 20px;">🧾</div>
+                        <h2 style="color: #667eea; margin-bottom: 15px;">Sistema de Punto de Venta</h2>
+                        <p style="color: #666; max-width: 600px; line-height: 1.6;">
+                            Accede al sistema completo de cajero: configura caja inicial, crea órdenes, 
+                            procesa pagos, gestiona clientes y realiza cierre de caja.
+                        </p>
+                    </div>
 
-                        <div class="productos-list" id="productos-orden-list">
-                            <!-- Los productos se cargarán dinámicamente -->
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center; min-width: 180px;">
+                            <div style="font-size: 30px; margin-bottom: 10px;">💰</div>
+                            <div style="font-weight: bold; color: #333;">Caja Inicial</div>
+                            <div style="font-size: 13px; color: #666;">Configura monto inicial</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center; min-width: 180px;">
+                            <div style="font-size: 30px; margin-bottom: 10px;">📦</div>
+                            <div style="font-weight: bold; color: #333;">Crear Órdenes</div>
+                            <div style="font-size: 13px; color: #666;">Gestiona productos</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center; min-width: 180px;">
+                            <div style="font-size: 30px; margin-bottom: 10px;">💳</div>
+                            <div style="font-weight: bold; color: #333;">Procesar Pagos</div>
+                            <div style="font-size: 13px; color: #666;">Efectivo, puntos y descuentos</div>
+                        </div>
+                        <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; text-align: center; min-width: 180px;">
+                            <div style="font-size: 30px; margin-bottom: 10px;">📊</div>
+                            <div style="font-weight: bold; color: #333;">Cierre de Caja</div>
+                            <div style="font-size: 13px; color: #666;">Registra ventas del turno</div>
                         </div>
                     </div>
 
-                    <div class="orden-resumen">
-                        <h3>Resumen de Orden</h3>
-                        
-                        <div class="cliente-selector">
-                            <label>Cliente (Opcional)</label>
-                            <div class="input-group">
-                                <input type="text" id="orden-cliente-correo" class="form-control" placeholder="correo@ejemplo.com">
-                                <button class="btn btn-secondary" onclick="buscarClienteOrden()">Buscar</button>
-                            </div>
-                            <div id="cliente-info-orden"></div>
-                        </div>
-
-                        <div class="items-list" id="orden-items-list">
-                            <p class="empty-message">No hay productos en la orden</p>
-                        </div>
-
-                        <div class="orden-totales">
-                            <div class="total-row">
-                                <span>Subtotal:</span>
-                                <span id="orden-subtotal">$0.00</span>
-                            </div>
-                            <div class="total-row total-final">
-                                <span>Total:</span>
-                                <span id="orden-total">$0.00</span>
-                            </div>
-                        </div>
-
-                        <div class="orden-notas">
-                            <label>Notas Especiales</label>
-                            <textarea id="orden-notas" class="form-control" rows="2" placeholder="Instrucciones especiales..."></textarea>
-                        </div>
-
-                        <div class="orden-actions">
-                            <button class="btn btn-secondary btn-block" onclick="limpiarOrden()">Limpiar Orden</button>
-                            <button class="btn btn-primary btn-block" onclick="guardarOrdenGerente()">Generar Orden</button>
-                        </div>
+                    <button class="btn btn-primary" onclick="abrirCajeroGerente()" style="font-size: 18px; padding: 15px 40px; min-width: 300px;">
+                        🚀 Abrir Punto de Venta Completo
+                    </button>
+                    
+                    <div style="background: #e3f2fd; padding: 15px; border-radius: 8px; border-left: 4px solid #2196f3; max-width: 500px;">
+                        <small style="color: #1565c0;">
+                            <strong>ℹ️ Nota:</strong> Al abrir el punto de venta, tendrás acceso completo a todas las funciones del cajero, 
+                            incluyendo configuración de caja inicial y cierre de caja. Un botón especial te permitirá regresar a este menú.
+                        </small>
                     </div>
                 </div>
             </section>
 
         </main>
+    </div>
+
+        <!-- Modal Caja Inicial (agregar ANTES del cierre de body) -->
+    <div id="modal-caja-inicial-gerente" class="modal" style="display: none;">
+        <div class="modal-content">
+            <h2>💰 Monto inicial de caja</h2>
+            <p>¿Con cuánto dinero inicia la caja?</p>
+            <input type="number" id="monto-caja-gerente" step="0.01" min="200" placeholder="Mínimo $200.00" class="form-control" style="font-size: 18px; text-align: center; padding: 15px;">
+            <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+                <small style="color: #856404;">
+                    ⚠️ <strong>Importante:</strong> Este monto será el que se registre como inicial en el sistema de caja.
+                </small>
+            </div>
+            <div class="form-actions" style="margin-top: 20px;">
+                <button onclick="cerrarModalCajaGerente()" class="btn btn-secondary">Cancelar</button>
+                <button onclick="confirmarCajaGerente()" class="btn btn-primary">Confirmar e Iniciar</button>
+            </div>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='js/gerente_dashboard.js') }}"></script>

@@ -42,9 +42,8 @@ function configurarNavegacion() {
             } else if (sectionId === 'descuentos') {
                 cargarDescuentos();
             } else if (sectionId === 'ordenes') {
-                inicializarSeccionOrdenes();
-            } else if (sectionId === 'reportes') {
-                cargarReportesRapidos();
+                // Ya no necesitamos inicializar nada, solo mostrar la sección
+                console.log('Sección de Punto de Venta cargada');
             }
         });
     });
@@ -775,6 +774,80 @@ async function guardarOrdenGerente() {
         mostrarAlerta('Error al guardar orden', 'error');
     }
 }
+
+
+// ==================== PUNTO DE VENTA ====================
+
+
+function abrirCajeroGerente() {
+    // Guardar en sessionStorage que el gerente está usando el cajero
+    sessionStorage.setItem('gerente_usando_cajero', 'true');
+    
+    // Mostrar modal para configurar caja inicial
+    document.getElementById('modal-caja-inicial-gerente').style.display = 'flex';
+    document.getElementById('monto-caja-gerente').value = '';
+    document.getElementById('monto-caja-gerente').focus();
+}
+
+function cerrarModalCajaGerente() {
+    document.getElementById('modal-caja-inicial-gerente').style.display = 'none';
+    // Limpiar el flag de sessionStorage si cancela
+    sessionStorage.removeItem('gerente_usando_cajero');
+}
+
+async function confirmarCajaGerente() {
+    const monto = document.getElementById('monto-caja-gerente').value;
+    
+    // Validar que se haya ingresado un monto
+    if (!monto || monto === '') {
+        alert('Por favor ingrese un monto');
+        return;
+    }
+    
+    // Convertir a número y validar monto mínimo
+    const montoNumero = parseFloat(monto);
+    
+    if (isNaN(montoNumero)) {
+        alert('Por favor ingrese un monto válido');
+        return;
+    }
+    
+    if (montoNumero < 200) {
+        alert('El monto mínimo de caja es de $200.00');
+        document.getElementById('monto-caja-gerente').focus();
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/set-caja', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ monto: montoNumero })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            // Redirigir al cajero después de configurar la caja
+            window.location.href = '/cajero';
+        } else {
+            alert('Error al configurar la caja: ' + data.message);
+        }
+    } catch (error) {
+        console.error('Error al configurar la caja:', error);
+        alert('Error al configurar la caja');
+    }
+}
+
+// Permitir Enter para confirmar en el input de caja
+document.getElementById('monto-caja-gerente')?.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        confirmarCajaGerente();
+    }
+});
+
 
 
 // ==================== UTILIDADES ====================

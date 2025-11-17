@@ -13,6 +13,11 @@
             <span class="role">{{ empleado.rol|capitalize }}</span>
         </div>
         <div class="header-actions">
+            {% if es_gerente %}
+            <button class="btn-regresar-gerente" onclick="regresarMenuGerente()">
+                ← Regresar al Menú de Gerente
+            </button>
+            {% endif %}
             <button class="btn-secondary" onclick="toggleOrdenes()">
                 Ver Órdenes (<span id="ordenes-count">0</span>)
             </button>

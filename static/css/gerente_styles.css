@@ -762,3 +762,39 @@ tbody tr:hover {
     font-weight: 600;
     color: #333;
 }
+
+
+/* Modal de Caja Inicial */
+#modal-caja-inicial-gerente .modal-content {
+    max-width: 500px;
+    text-align: center;
+}
+
+#modal-caja-inicial-gerente h2 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+    font-size: 28px;
+}
+
+#modal-caja-inicial-gerente p {
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 16px;
+}
+
+#modal-caja-inicial-gerente input[type="number"] {
+    width: 100%;
+    padding: 15px;
+    font-size: 24px;
+    text-align: center;
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+#modal-caja-inicial-gerente input[type="number"]:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}

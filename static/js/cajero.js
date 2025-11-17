@@ -650,10 +650,23 @@ function toggleOrdenes() {
     }
 }
 
+// Modificar función de logout para manejar gerentes
 async function logout() {
-    if (!confirm('¿Desea cerrar sesión?\n\nSe eliminará toda la información de la sesión actual.')) {
+    const esGerenteUsandoCajero = sessionStorage.getItem('gerente_usando_cajero') === 'true';
+    
+    let mensaje = '¿Desea cerrar sesión?';
+    if (esGerenteUsandoCajero) {
+        mensaje = '¿Desea cerrar sesión?\n\n⚠️ Se cerrará su sesión y se perderán los datos de caja si no ha hecho cierre.\n\n';
+    } else {
+        mensaje = '¿Desea cerrar sesión?\n\nSe eliminará toda la información de la sesión actual.';
+    }
+    
+    if (!confirm(mensaje)) {
         return;
     }
+    
+    // Limpiar sessionStorage
+    sessionStorage.removeItem('gerente_usando_cajero');
     
     try {
         const response = await fetch('/api/cerrar-sesion', {
@@ -666,18 +679,15 @@ async function logout() {
         const data = await response.json();
         
         if (data.success) {
-            // Redirigir a la página de login
             window.location.href = '/';
         } else {
             alert('Error al cerrar sesión: ' + data.message);
         }
     } catch (error) {
         console.error('Error al cerrar sesión:', error);
-        // Redirigir de todas formas
         window.location.href = '/';
     }
 }
-
 async function abrirCierreCaja() {
     // Primero verificar si hay órdenes pendientes
     try {
@@ -837,6 +847,21 @@ document.addEventListener('DOMContentLoaded', function() {
     // Actualizar órdenes cada 30 segundos
     setInterval(loadOrdenes, 30000);
 });
+
+// Nueva función para regresar al menú de gerente
+function regresarMenuGerente() {
+    if (cart.length > 0) {
+        if (!confirm('⚠️ Tiene productos en la orden actual.\n\n¿Desea salir de todos modos? Los productos se perderán.')) {
+            return;
+        }
+    }
+    
+    // NO limpiar sessionStorage, mantener el flag
+    // NO limpiar Redis, mantener la sesión de caja
+    
+    // Redirigir al dashboard de gerente
+    window.location.href = '/gerente/dashboard';
+}
 
 // Funciones para manejo de clientes
 async function abrirModalClientes() {
