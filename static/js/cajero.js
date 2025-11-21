@@ -500,29 +500,33 @@ function calcularCambio() {
     
     if (pagoCon < total) {
         const faltante = total - pagoCon;
-        errorDiv.textContent = `Pago insuficiente. Falta: $${faltante.toFixed(2)}`;
+        errorDiv.textContent = `❌ Pago insuficiente. Falta: $${faltante.toFixed(2)}`;
         errorDiv.style.display = 'block';
         cambioContainer.style.display = 'none';
         btnConfirmar.disabled = true;
     } else {
         const cambio = pagoCon - total;
         
-        // NUEVA VALIDACIÓN: Verificar si hay suficiente cambio en caja
-        if (cambio > 0) {
+        // Pago exacto - no hay cambio
+        if (cambio === 0) {
+            cambioValue.textContent = `$${cambio.toFixed(2)}`;
+            cambioContainer.style.display = 'block';
+            btnConfirmar.disabled = false;
+        } 
+        // Hay cambio - verificar que haya suficiente en caja
+        else {
+            // Mostrar el cambio ANTES de verificar
+            cambioValue.textContent = `$${cambio.toFixed(2)}`;
+            cambioContainer.style.display = 'block';
+            
+            // Verificar si hay suficiente cambio disponible
             verificarCambioDisponible(cambio, total).then(suficiente => {
                 if (!suficiente) {
                     btnConfirmar.disabled = true;
                 } else {
-                    cambioValue.textContent = `$${cambio.toFixed(2)}`;
-                    cambioContainer.style.display = 'block';
                     btnConfirmar.disabled = false;
                 }
             });
-        } else {
-            // Pago exacto
-            cambioValue.textContent = `$${cambio.toFixed(2)}`;
-            cambioContainer.style.display = 'block';
-            btnConfirmar.disabled = false;
         }
     }
 }
@@ -534,14 +538,19 @@ async function verificarCambioDisponible(cambioNecesario, totalVenta) {
         
         if (data.success) {
             const cajaActual = data.caja_actual;
-            // La caja después de recibir el pago pero antes de dar cambio
-            const cajaDespuesDePago = cajaActual + totalVenta;
-            const cajaFinal = cajaDespuesDePago - cambioNecesario;
             
             const errorDiv = document.getElementById('pago-error');
             
-            if (cajaFinal < 0) {
-                errorDiv.textContent = `⚠️ No hay suficiente cambio en caja.\nCambio necesario: $${cambioNecesario.toFixed(2)}\nEfectivo disponible: $${cajaActual.toFixed(2)}\nSolicite al cliente un monto más cercano al total.`;
+            // CORRECCIÓN: El cambio no puede ser mayor al efectivo disponible en caja
+            // No importa si después entra el dinero de la venta, 
+            // el cambio debe ser menor o igual a lo que HAY AHORA en caja
+            
+            if (cambioNecesario > cajaActual) {
+                errorDiv.textContent = `⚠️ NO HAY SUFICIENTE CAMBIO EN CAJA\n\n` +
+                    `💰 Cambio necesario: $${cambioNecesario.toFixed(2)}\n` +
+                    `💵 Efectivo en caja: $${cajaActual.toFixed(2)}\n` +
+                    `❌ Falta: $${(cambioNecesario - cajaActual).toFixed(2)}\n\n` +
+                    `Por favor solicite al cliente un monto más cercano al total.`;
                 errorDiv.style.display = 'block';
                 return false;
             }
