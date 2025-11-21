@@ -180,15 +180,32 @@ async function loadOrdenes() {
         const data = await response.json();
         
         if (data.success) {
-            displayOrdenes(data.ordenes);
-            const pendientes = data.ordenes.filter(o => o.status === 'pendiente').length;
+            // Enriquecer órdenes con información del cliente
+            const ordenesEnriquecidas = await Promise.all(
+                data.ordenes.map(async (orden) => {
+                    if (orden.cliente_id) {
+                        try {
+                            const clienteResponse = await fetch(`/api/cliente/${orden.cliente_id}`);
+                            const clienteData = await clienteResponse.json();
+                            if (clienteData.success) {
+                                orden.cliente_nombre = clienteData.cliente.nombre;
+                            }
+                        } catch (error) {
+                            console.error('Error al cargar cliente:', error);
+                        }
+                    }
+                    return orden;
+                })
+            );
+            
+            displayOrdenes(ordenesEnriquecidas);
+            const pendientes = ordenesEnriquecidas.filter(o => o.status === 'pendiente').length;
             document.getElementById('ordenes-count').textContent = pendientes;
         }
     } catch (error) {
         console.error('Error al cargar órdenes:', error);
     }
 }
-
 function displayOrdenes(ordenes) {
     const ordenesListDiv = document.getElementById('ordenes-list');
     
